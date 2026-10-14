@@ -12,6 +12,11 @@ const FIELD_LABELS = {
   borderWidth: 'ความหนาขอบ', oldPrice: 'ราคาเดิม', price: 'ราคา', unit: 'หน่วย', note: 'หมายเหตุ',
   tag: 'ป้ายหัว', items: 'ข้อความ (บรรทัดละ 1 อัน)', speed: 'ความเร็ว (px/วินาที)',
   secondsEach: 'วินาทีต่อข้อความ', messages: 'ข้อความ (บรรทัดละ 1 อัน: หัวข้อ | ข้อความ)',
+  title: 'หัวข้อ', subtitle: 'ข้อความรอง', start: 'เริ่มโผล่ที่วินาที', hold: 'ค้างไว้ (วินาที)',
+  color: 'สี', persistent: 'แสดงตลอด (ไม่เด้งเข้าออก)', compact: 'แบบเล็ก', from: 'เด้งเข้าจากทิศ',
+  effect: 'เอฟเฟกต์', thickness: 'ความหนา', inset: 'ระยะห่างขอบจอ', radius: 'ความโค้งมุม',
+  segments: 'จำนวนแสงวิ่ง', spacing: 'ระยะห่างหลอดไฟ', size: 'ขนาด', pattern: 'รูปแบบ',
+  period: 'ความเร็ว (วินาทีต่อรอบ)', gap: 'ระยะหลอดไฟจากกรอบ', length: 'ความยาวขา', sub: 'ข้อความรอง', dot: 'จุดกะพริบ',
 };
 const THEME_LABELS = { primary: 'สีหลัก', accent: 'สีเน้น', panel: 'สีพื้นกล่อง', font: 'ฟอนต์' };
 const POSITION_KEYS = ['left', 'right', 'top', 'bottom', 'width', 'transform-origin', 'transformOrigin'];
@@ -21,6 +26,8 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   const H = ctx.height;
   const D = ctx.duration;
   const labels = template.labels || {};
+  const fixed = new Set(template.fixed || []); // ชิ้นที่เต็มจอ ลากไม่ได้ (เช่น กรอบ)
+  const labelOf = (key) => template.labelFor?.(key, working.elements[key]) || labels[key] || key;
 
   // สำเนาที่กำลังแก้ (ไม่รวม name ที่ cli ใส่มาให้)
   const working = structuredClone(ctx.config);
@@ -55,6 +62,16 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   const scrub = el('input', '', timeRow);
   Object.assign(scrub, { type: 'range', min: 0, max: D, step: 0.01, value: t });
   renderFrame(t);
+
+  const showRow = el('label', 'ed-row ed-check', timeSec);
+  const showAll = el('input', '', showRow);
+  showAll.type = 'checkbox';
+  showAll.checked = !!ctx.showAll;
+  el('span', '', showRow, 'แสดงทุกชิ้นค้างไว้ (ปิดเพื่อดูจังหวะโผล่จริง)');
+  showAll.addEventListener('change', () => {
+    ctx.showAll = showAll.checked;
+    renderFrame(t);
+  });
 
   const listSec = section('ชิ้นส่วน (ติ๊กเพื่อเปิด/ปิด, คลิกชื่อเพื่อเลือก)');
   const list = el('div', 'ed-list', listSec);
@@ -229,6 +246,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
     e.preventDefault();
     const key = node.dataset.key;
     if (selected !== key) select(key);
+    if (fixed.has(key)) return;
     snapshot();
     const { start, keepWidth } = beginMove(node);
     drag = { key, node, start, keepWidth, px: e.clientX, py: e.clientY, moved: false };
@@ -266,7 +284,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
       undo();
       return;
     }
-    if (typing || !selected) return;
+    if (typing || !selected || fixed.has(selected)) return;
     const step = e.shiftKey ? 10 : 1;
     const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
     if (!d) return;
@@ -304,7 +322,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
         markDirty();
         await rebuild();
       });
-      const name = el('span', '', row, labels[key] || key);
+      const name = el('span', '', row, labelOf(key));
       name.addEventListener('click', () => select(key));
     }
   }
@@ -317,10 +335,27 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
     }
     const key = selected;
     const cfg = working.elements[key];
-    el('div', 'ed-subtitle', props, labels[key] || key);
+    el('div', 'ed-subtitle', props, labelOf(key));
     props.appendChild(coords);
     const node = nodeOf(key);
     coords.textContent = node ? `x ${node.offsetLeft}  y ${node.offsetTop}` : '(ปิดอยู่)';
+
+    if (template.dynamic) {
+      const row = el('div', 'ed-row', props);
+      const dup = el('button', '', row, '⧉ ทำสำเนา');
+      const del = el('button', 'danger', row, '🗑 ลบ');
+      dup.addEventListener('click', () => duplicate(key));
+      del.addEventListener('click', () => removeElement(key));
+    }
+
+    if (fixed.has(key)) {
+      el('p', 'ed-hint', props, 'ชิ้นนี้เต็มจอ ปรับได้จากค่าด้านล่าง');
+      for (const [k, v] of Object.entries(cfg)) {
+        if (k === 'enabled' || k === 'style') continue;
+        addField(props, cfg, k, v);
+      }
+      return;
+    }
 
     // ขนาด
     const scaleRow = field(props, 'ขนาด');
@@ -365,6 +400,33 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
     }
   }
 
+  async function duplicate(key) {
+    snapshot();
+    const base = key.replace(/_?\d+$/, '');
+    let i = 2;
+    while (working.elements[`${base}${i}`]) i++;
+    const copy = structuredClone(working.elements[key]);
+    // เลื่อนสำเนาเข้าด้านในจอ 40px จะได้ไม่ทับของเดิม
+    for (const side of ['left', 'right', 'top', 'bottom']) {
+      if (typeof copy.style?.[side] === 'number') copy.style[side] += 40;
+    }
+    template.onDuplicate?.(copy, ctx);
+    working.elements[`${base}${i}`] = copy;
+    markDirty();
+    await rebuild();
+    select(`${base}${i}`);
+  }
+
+  async function removeElement(key) {
+    if (!confirm(`ลบ "${labelOf(key)}" ?`)) return;
+    snapshot();
+    delete working.elements[key];
+    selected = null;
+    markDirty();
+    await rebuild();
+    renderPanel();
+  }
+
   function field(parent, label) {
     const wrapEl = el('label', 'ed-field', parent);
     el('span', 'ed-label', wrapEl, label);
@@ -381,6 +443,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
       if (apply(e.target) === false) return;
       markDirty();
       rebuildSoon();
+      renderList(); // ชื่อในรายการอาจเปลี่ยนตามข้อความ
     };
   }
 
@@ -398,6 +461,18 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
         if (n.value === '' || Number.isNaN(Number(n.value))) return false;
         obj[k] = Number(n.value);
       }));
+    } else if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) {
+      const inp = el('input', '', row);
+      Object.assign(inp, { type: 'color', value: v });
+      inp.addEventListener('input', onEdit((n) => (obj[k] = n.value)));
+    } else if (typeof v === 'string' && Array.isArray(template.choices?.[k])) {
+      const sel = el('select', '', row);
+      for (const opt of template.choices[k]) {
+        const o = el('option', '', sel, opt);
+        o.value = opt;
+      }
+      sel.value = v;
+      sel.addEventListener('change', onEdit((n) => (obj[k] = n.value)));
     } else if (typeof v === 'string') {
       const inp = el('input', '', row);
       Object.assign(inp, { type: 'text', value: v });

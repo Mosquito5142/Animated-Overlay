@@ -17,7 +17,9 @@
     "still": "node src/cli.js render --still",
     "still:vertical": "node src/cli.js render --still -c vertical.config.json",
     "composite": "node src/cli.js composite",
-    "check": "node src/cli.js check"
+    "check": "node src/cli.js check",
+    "templates": "node src/cli.js templates",
+    "new": "node src/cli.js new"
   },
   "engines": {
     "node": ">=18"

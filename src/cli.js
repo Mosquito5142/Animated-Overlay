@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
 import { startServer } from './server.js';
@@ -16,6 +16,9 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
   render                  เรนเดอร์ไฟล์ overlay ตาม config
   render --still [วินาที]  เรนเดอร์ภาพนิ่ง PNG โปร่งใส (ค่าเริ่มต้นที่วินาทีที่ 1)
   composite --bg <ไฟล์>    ซ้อน overlay ลงบนคลิป/รูป เพื่อตรวจผล (ได้ไฟล์ .mp4)
+  templates               ดูรายชื่อเทมเพลตที่มี
+  new <เทมเพลต> <ไฟล์>     สร้าง config ใหม่จากเทมเพลต เช่น new neon-frame my.config.json
+                          (ใส่ --vertical เพื่อทำขนาดแนวตั้ง 1080x1920)
   check                   ตรวจว่าเครื่องมี FFmpeg / Chromium พร้อมใช้
 
 ตัวเลือก:
@@ -41,6 +44,7 @@ function parse() {
       fps: { type: 'string' },
       intro: { type: 'boolean' },
       still: { type: 'boolean' },
+      vertical: { type: 'boolean' },
       bg: { type: 'string' },
       overlay: { type: 'string' },
       port: { type: 'string', short: 'p', default: '5173' },
@@ -55,12 +59,46 @@ function parse() {
   return { cmd: positionals[0], rest: positionals.slice(1), values, overrides };
 }
 
+async function listTemplates() {
+  const dirs = await readdir(path.join(ROOT, 'templates'), { withFileTypes: true });
+  const out = [];
+  for (const d of dirs) {
+    if (!d.isDirectory() || d.name.startsWith('_')) continue;
+    const cfg = await readFile(path.join(ROOT, 'templates', d.name, 'default.config.json'), 'utf8')
+      .then(JSON.parse, () => ({}));
+    out.push({ name: d.name, description: cfg.description || '' });
+  }
+  return out;
+}
+
 async function main() {
   const { cmd, rest, values, overrides } = parse();
   if (!cmd || values.help) {
     console.log(HELP);
     return;
   }
+  if (cmd === 'templates') {
+    for (const t of await listTemplates()) console.log(`  ${t.name.padEnd(18)} ${t.description}`);
+    return;
+  }
+  if (cmd === 'new') {
+    const [template, target] = rest;
+    if (!template || !target) throw new Error('ใช้แบบนี้: new <เทมเพลต> <ไฟล์.config.json> [--vertical]');
+    const src = path.join(ROOT, 'templates', template, 'default.config.json');
+    const data = JSON.parse(await readFile(src, 'utf8').catch(() => {
+      throw new Error(`ไม่พบเทมเพลต "${template}" (ดูรายชื่อด้วยคำสั่ง templates)`);
+    }));
+    const out = path.resolve(target);
+    if (await access(out).then(() => true, () => false)) throw new Error(`มีไฟล์ ${target} อยู่แล้ว จะไม่เขียนทับ`);
+    delete data.description;
+    if (values.vertical) data.resolution = [1080, 1920];
+    await writeFile(out, JSON.stringify(data, null, 2) + '\n');
+    console.log(`สร้าง ${target} แล้ว ต่อไป:`);
+    console.log(`  npm run edit -- -c ${target}     แก้ด้วยการลากวาง`);
+    console.log(`  npm run render -- -c ${target}   เรนเดอร์`);
+    return;
+  }
+
   const configPath = path.resolve(values.config);
   const outDir = path.resolve(values.out);
   const nameFromConfig = path.basename(configPath, '.json').replace(/\.config$/, '');

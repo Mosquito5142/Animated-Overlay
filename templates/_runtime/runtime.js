@@ -94,6 +94,8 @@ export async function run(template) {
   const mount = async (cfg) => {
     ctx.config = cfg;
     ctx.intro = !!cfg.intro && mode !== 'edit';
+    // หน้าแก้ไขเปิดค่านี้ไว้ เพื่อให้ชิ้นที่โผล่เป็นช่วงๆ (เช่น ป้ายเด้ง) แสดงค้างให้ลากได้
+    ctx.showAll ??= mode === 'edit';
     // เลย์เอาต์: "auto" = เลือกตามขนาด (สูงกว่ากว้าง → portrait)
     ctx.layout = cfg.layout && cfg.layout !== 'auto' ? cfg.layout : H > W ? 'portrait' : 'landscape';
     stage.replaceChildren();

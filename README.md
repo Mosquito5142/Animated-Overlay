@@ -22,6 +22,36 @@ npm run still                      # ได้ output/overlay.png ภาพน�
 npm run composite -- --bg clip.mp4 # ซ้อน overlay ลงคลิปจริง → output/overlay-composite.mp4
 ```
 
+### เทมเพลต
+
+| เทมเพลต | สไตล์ | ไฟล์ตัวอย่าง |
+|---|---|---|
+| `sponsor-gaming` | ชุดโฆษณาคลิปเกมครบชุด (HIGHLIGHT, โดเนท, กรอบกล้อง, แถบโปรโม, ตัววิ่ง) | `overlay.config.json`, `vertical.config.json` |
+| `sponsor-popup` | ป้ายสปอนเซอร์**เด้งเข้ามุมจอ**ทีละอัน แล้วสไลด์ออก + ป้ายเล็กถาวร | `popup.config.json` |
+| `neon-frame` | **กรอบไฟนีออน**รอบจอ: แสงวิ่ง / กะพริบ / หายใจ / สายรุ้ง + หลอดไฟ + มุมกรอบ + ป้ายข้อความ | `neon.config.json` |
+
+สร้าง config ของตัวเองจากเทมเพลตไหนก็ได้ แล้วแต่งให้เป็นแบบของคุณ:
+
+```bash
+npm run templates                                   # ดูรายชื่อเทมเพลต
+npm run new -- sponsor-popup mybrand.config.json    # สร้าง config ใหม่
+npm run new -- neon-frame mylive.config.json --vertical   # แนวตั้ง
+npm run edit -- -c mybrand.config.json              # แต่งด้วยการลากวาง
+npm run render -- -c mybrand.config.json            # ได้ output/mybrand.mov
+```
+
+**sponsor-popup:** ป้ายแต่ละอันมี `start` (วินาทีที่เริ่มโผล่), `hold` (ค้างกี่วินาที), `color`, `tag`, `title`, `subtitle`, `image`
+- ป้ายจะเด้งเข้ามาจากขอบจอที่ใกล้ที่สุด ลากไปมุมไหนก็เด้งจากขอบนั้น หรือบังคับทิศด้วย `from`
+- กด "ทำสำเนา" เพื่อเพิ่มป้าย (ระบบตั้งเวลาให้โผล่ต่อจากป้ายเดิม) หรือกด "ลบ"
+- ใส่ `persistent: true` ถ้าอยากให้ป้ายค้างตลอด และ `compact: true` ถ้าอยากได้ป้ายเล็ก
+- ความยาวรวม (`duration`) ควรมากกว่าเวลาเริ่มของป้ายสุดท้าย + `hold` + 1.2 วินาที
+
+**neon-frame:**
+- `frame.effect` = `chase` / `blink` / `pulse` / `rainbow`
+- `bulbs.pattern` = `alternate` / `chase` / `twinkle`
+- `theme.primary` / `theme.secondary` คือสีไฟ 2 สี
+- ทุกอย่างคำนวณตามขนาดจอ ใช้กับแนวตั้งได้ทันที
+
 ### หน้าแก้ไขแบบลากวาง
 
 ```bash
@@ -31,6 +61,7 @@ npm run edit:vertical              # แก้เลย์เอาต์แน�
 
 - **ลาก**ชิ้นส่วนบนจอเพื่อย้าย ลูกศรขยับทีละ 1px (กด Shift ค้างไว้ = 10px)
 - แผงด้านขวาใช้**ติ๊กเปิด/ปิด**ชิ้นส่วน, **ปรับขนาด**, แก้**ข้อความ/ราคา/รูป**, เปลี่ยน**สี**, และตั้งรูปพื้นหลังตัวอย่าง
+- ช่อง "แสดงทุกชิ้นค้างไว้" ทำให้ป้ายที่โผล่เป็นช่วงๆ แสดงค้างไว้ให้ลากได้ ถ้าปิดไว้จะเห็นจังหวะจริง
 - **Ctrl+S** บันทึกกลับลงไฟล์ config (ถ้าค่าผิด ระบบจะไม่เขียนทับไฟล์เดิม) / **Ctrl+Z** ย้อนกลับ
 - ตำแหน่งจะยึดกับขอบจอที่ใกล้ที่สุด เช่น ป้ายมุมขวาบนจะยึดขอบขวาและขอบบน
 - แก้เสร็จแล้วสั่ง `npm run render` ตามปกติ
@@ -98,6 +129,8 @@ npm run composite -- -c vertical.config.json --bg short.mp4
 - `measure()` (ไม่ใส่ก็ได้): วัดขนาดหลังโหลดฟอนต์/รูปเสร็จ
 - `frame(t, ctx)`: จัดท่าทางทุกชิ้นที่เวลา `t` วินาที
 - `labels` (ไม่ใส่ก็ได้): ชื่อภาษาไทยของแต่ละชิ้นที่จะแสดงในหน้าแก้ไข
+- `fixed`, `dynamic`, `choices`, `labelFor`, `onDuplicate` (ไม่ใส่ก็ได้): ตัวเลือกของหน้าแก้ไข ดูตัวอย่างจาก `sponsor-popup` และ `neon-frame`
+- `default.config.json`: config เริ่มต้นที่คำสั่ง `new` จะคัดลอกไปให้ ใส่ `description` ไว้แสดงใน `npm run templates`
 
 **กติกา:** ทุกการขยับต้องคำนวณจาก `t` เท่านั้น ห้ามใช้ CSS animation/transition หรือ timer
 ใช้ `ctx.cycle(t, คาบโดยประมาณ)` สำหรับแอนิเมชันที่วนซ้ำ ระบบจะปัดคาบให้หารความยาวลงตัว ไฟล์จึงวนลูปได้เนียน
