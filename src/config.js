@@ -1,7 +1,9 @@
 import { readFile, access } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath ให้ path ที่ถูกต้องทั้งบน Windows (C:\...) และ macOS/Linux
+export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const FORMATS = ['prores', 'webm', 'png'];
 

@@ -4,7 +4,6 @@ import { readFile, writeFile, readdir, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
 import { startServer } from './server.js';
-import { renderStill, renderVideo } from './render.js';
 import { composite, run } from './encode.js';
 
 const HELP = `
@@ -57,6 +56,18 @@ function parse() {
   if (values.fps) overrides.fps = Number(values.fps);
   if (values.intro) overrides.intro = true;
   return { cmd: positionals[0], rest: positionals.slice(1), values, overrides };
+}
+
+/** โหลด Playwright เฉพาะคำสั่งที่ต้องเรนเดอร์ (preview / edit ไม่ต้องใช้) */
+async function loadRenderer() {
+  try {
+    return await import('./render.js');
+  } catch (err) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND' && /playwright/.test(err.message)) {
+      throw new Error('ยังไม่ได้ติดตั้งแพ็กเกจ ให้รันในโฟลเดอร์โปรเจกต์:\n    npm install\n    npx playwright install chromium');
+    }
+    throw err;
+  }
 }
 
 async function listTemplates() {
@@ -137,6 +148,7 @@ async function main() {
     case 'render': {
       const cfg = await load();
       const started = Date.now();
+      const { renderStill, renderVideo } = await loadRenderer();
       const outputs = values.still
         ? await renderStill(cfg, outDir, rest[0] != null ? Number(rest[0]) : 1)
         : await renderVideo(cfg, outDir);
@@ -158,7 +170,9 @@ async function main() {
       for (const enc of ['prores_ks', 'libvpx-vp9']) {
         console.log(`${out.includes(enc) ? '✓' : '✗'} ffmpeg encoder ${enc}`);
       }
-      const { chromium } = await import('playwright');
+      const { chromium } = await import('playwright').catch(() => {
+        throw new Error('✗ ยังไม่ได้ติดตั้ง Playwright (รัน: npm install แล้ว npx playwright install chromium)');
+      });
       const b = await chromium.launch().catch((e) => e);
       if (b instanceof Error) console.log('✗ Chromium (รัน: npx playwright install chromium)');
       else {

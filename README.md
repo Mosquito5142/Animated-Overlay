@@ -8,10 +8,14 @@
 ต้องมี [Node.js](https://nodejs.org) 18 ขึ้นไป และ [FFmpeg](https://ffmpeg.org/download.html) (ต้องเรียก `ffmpeg` จาก command line ได้)
 
 ```bash
-npm install
+npm install                       # ติดตั้งแพ็กเกจ (ต้องทำก่อนใช้ทุกคำสั่ง)
 npx playwright install chromium   # ทำครั้งแรกครั้งเดียว
 npm run check                     # ตรวจว่าเครื่องพร้อม
 ```
+
+**Windows (PowerShell):** ติดตั้ง FFmpeg ได้ด้วยคำสั่ง `winget install Gyan.FFmpeg` แล้ว**ปิดและเปิด PowerShell ใหม่**ก่อนรัน `npm run check`
+
+> ถ้าเจอ `Cannot find package 'playwright'` แปลว่ายังไม่ได้รัน `npm install` ในโฟลเดอร์โปรเจกต์
 
 ## ใช้งาน
 
