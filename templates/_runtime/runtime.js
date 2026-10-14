@@ -8,6 +8,19 @@
 
 const params = new URLSearchParams(location.search);
 export const mode = ['render', 'edit'].includes(params.get('mode')) ? params.get('mode') : 'preview';
+/** ชื่องานที่เปิดอยู่ (?c=) ใช้ตอนโหลด/บันทึก config ในหน้า Studio */
+export const configName = params.get('c');
+const withC = (u) => (configName ? `${u}${u.includes('?') ? '&' : '?'}c=${encodeURIComponent(configName)}` : u);
+export const configUrl = () => withC('/__config.json');
+export const saveUrl = () => withC('/__save');
+/** ลิงก์ไปหน้าเดียวกันในโหมดอื่น (preview / edit) โดยคงงานที่เลือกไว้ */
+export function modeUrl(m) {
+  const q = new URLSearchParams(location.search);
+  if (m === 'preview') q.delete('mode');
+  else q.set('mode', m);
+  q.delete('embed');
+  return `${location.pathname}?${q}`;
+}
 
 export const clamp01 = (x) => Math.min(1, Math.max(0, x));
 export const lerp = (a, b, p) => a + (b - a) * p;
@@ -72,8 +85,9 @@ function waitForImages(root) {
 }
 
 export async function run(template) {
-  const res = await fetch('/__config.json', { cache: 'no-store' });
+  const res = await fetch(configUrl(), { cache: 'no-store' });
   const config = await res.json();
+  if (!res.ok) throw new Error(config.error || res.statusText);
   const [W, H] = config.resolution;
 
   document.documentElement.classList.add(`mode-${mode}`);
@@ -142,8 +156,11 @@ function startPreview(stage, ctx, renderFrame) {
   const { width: W, height: H, duration: D } = ctx;
   const viewport = document.getElementById('viewport');
   setPreviewBackground(params.get('bg') || ctx.config.preview?.background);
+  // embed=1: ภาพตัวอย่างเล็กในหน้า Studio ไม่ต้องมีแถบควบคุม
+  const embed = params.get('embed') === '1';
+  if (embed) document.documentElement.classList.add('embed');
   const fit = () => {
-    const bar = 56;
+    const bar = embed ? 0 : 56;
     const s = Math.min(window.innerWidth / W, (window.innerHeight - bar) / H);
     viewport.style.transform = `scale(${s})`;
     document.getElementById('preview-wrap').style.height = `${H * s}px`;
@@ -152,7 +169,16 @@ function startPreview(stage, ctx, renderFrame) {
   fit();
 
   const ui = document.getElementById('preview-ui');
-  ui.hidden = false;
+  ui.hidden = embed;
+  if (!embed) {
+    // ปุ่มไปหน้าปรับแต่ง / หน้าแรก
+    const edit = el('a', 'pv-btn primary', ui, '✏️ ปรับแต่ง');
+    edit.href = modeUrl('edit');
+    const home = el('a', 'pv-btn', ui, '🏠 หน้าแรก');
+    home.href = '/studio/index.html';
+    ui.prepend(home);
+    ui.append(edit);
+  }
   const playBtn = ui.querySelector('[data-play]');
   const scrub = ui.querySelector('[data-scrub]');
   const label = ui.querySelector('[data-time]');

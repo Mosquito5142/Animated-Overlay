@@ -8,6 +8,7 @@
     "overlay": "src/cli.js"
   },
   "scripts": {
+    "start": "node src/cli.js start",
     "preview": "node src/cli.js preview",
     "preview:vertical": "node src/cli.js preview -c vertical.config.json",
     "edit": "node src/cli.js edit",

@@ -3,7 +3,7 @@
 // - เปิด/ปิด, แก้ข้อความ, ปรับขนาด, เปลี่ยนสี จากแผงด้านขวา
 // - บันทึก (Ctrl+S) จะเขียนกลับลงไฟล์ config ผ่าน POST /__save
 
-import { el, applyStyle, setPreviewBackground } from './runtime.js';
+import { el, applyStyle, setPreviewBackground, saveUrl, modeUrl, configName } from './runtime.js';
 
 const FIELD_LABELS = {
   text: 'ข้อความ', name: 'ชื่อ', amount: 'จำนวนเงิน', currency: 'สกุลเงิน',
@@ -31,7 +31,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
 
   // สำเนาที่กำลังแก้ (ไม่รวม name ที่ cli ใส่มาให้)
   const working = structuredClone(ctx.config);
-  const configName = working.name;
+  const configNameFallback = working.name;
   delete working.name;
   working.elements ||= {};
   working.theme ||= {};
@@ -50,11 +50,23 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   panel.id = 'editor-panel';
 
   const head = el('div', 'ed-head', panel);
-  el('div', 'ed-title', head, `แก้ไข: ${configName || 'config'}`);
+  el('div', 'ed-title', head, `ปรับแต่ง: ${configName || configNameFallback || 'config'}`);
   const status = el('div', 'ed-status', head, 'บันทึกแล้ว');
   const headBtns = el('div', 'ed-row', head);
   const undoBtn = el('button', '', headBtns, '↶ ย้อนกลับ');
   const saveBtn = el('button', 'primary', headBtns, '💾 บันทึก');
+  const navBtns = el('div', 'ed-row ed-nav', head);
+  const homeLink = el('a', 'ed-link', navBtns, '🏠 หน้าแรก');
+  homeLink.href = '/studio/index.html';
+  const previewLink = el('a', 'ed-link', navBtns, '▶ ดูตัวอย่าง');
+  previewLink.href = modeUrl('preview');
+  const renderBtn = el('button', '', navBtns, '🎬 เรนเดอร์');
+  const isTemplateDemo = configName?.startsWith('@');
+  if (isTemplateDemo) {
+    renderBtn.disabled = true;
+    saveBtn.disabled = true;
+    el('div', 'ed-warn', head, 'นี่คือตัวอย่างของเทมเพลต ลองปรับดูได้ แต่ต้องกลับไปกด "ใช้เทมเพลตนี้" ที่หน้าแรกก่อนถึงจะบันทึกได้');
+  }
 
   const timeSec = section('เวลา (ดูท่าทางแอนิเมชัน)');
   const timeRow = el('div', 'ed-row', timeSec);
@@ -85,6 +97,15 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   el('p', 'ed-hint', panel,
     'ลากชิ้นส่วนบนจอเพื่อย้าย • ลูกศรขยับ 1px (Shift = 10px) • Ctrl+S บันทึก • Ctrl+Z ย้อนกลับ\n' +
     'ตำแหน่งจะยึดกับขอบจอที่ใกล้ที่สุด เมื่อเสร็จแล้วสั่ง npm run render');
+
+  async function api(url, body) {
+    const res = await fetch(url, body ? {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    } : { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    return data;
+  }
 
   function section(title) {
     const s = el('section', 'ed-sec', panel);
@@ -144,7 +165,7 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   async function save() {
     saveBtn.disabled = true;
     try {
-      const res = await fetch('/__save', {
+      const res = await fetch(saveUrl(), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(working),
@@ -163,6 +184,31 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   }
 
   saveBtn.addEventListener('click', save);
+
+  // เรนเดอร์จากหน้าปรับแต่ง: บันทึกก่อน แล้วสั่งเซิร์ฟเวอร์เรนเดอร์ พร้อมแสดงความคืบหน้า
+  renderBtn.addEventListener('click', async () => {
+    if (dirty) await save();
+    if (dirty) return;
+    renderBtn.disabled = true;
+    try {
+      let job = await api('/__api/render', { name: configName || configNameFallback });
+      while (job.status === 'running') {
+        status.textContent = job.phase === 'encode'
+          ? `🎬 กำลังเข้ารหัส ${job.format} ...`
+          : `🎬 เรนเดอร์ ${job.done}/${job.total || '?'} เฟรม`;
+        await new Promise((r) => setTimeout(r, 700));
+        job = await api(`/__api/jobs/${job.id}`);
+      }
+      if (job.status === 'error') throw new Error(job.error);
+      status.textContent = `✓ เรนเดอร์เสร็จ: ${job.outputs.join(', ')}`;
+      status.classList.remove('dirty');
+    } catch (err) {
+      status.textContent = `✗ เรนเดอร์ไม่ได้: ${err.message}`;
+      status.classList.add('dirty');
+    } finally {
+      renderBtn.disabled = false;
+    }
+  });
   undoBtn.addEventListener('click', undo);
   window.addEventListener('beforeunload', (e) => {
     if (dirty) e.preventDefault();

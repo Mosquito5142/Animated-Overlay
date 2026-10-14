@@ -65,8 +65,11 @@ export async function renderStill(cfg, outDir, t) {
   }
 }
 
-/** เรนเดอร์ทุกเฟรมแล้วเข้ารหัสตาม cfg.format */
-export async function renderVideo(cfg, outDir) {
+/**
+ * เรนเดอร์ทุกเฟรมแล้วเข้ารหัสตาม cfg.format
+ * onProgress({ phase: 'capture' | 'encode', done, total, format }) ใช้แสดงความคืบหน้าในหน้า studio
+ */
+export async function renderVideo(cfg, outDir, { onProgress } = {}) {
   await mkdir(outDir, { recursive: true });
   const total = Math.round(cfg.duration * cfg.fps);
   const framesDir = path.join(os.tmpdir(), `overlay-frames-${process.pid}-${Date.now()}`);
@@ -74,11 +77,12 @@ export async function renderVideo(cfg, outDir) {
 
   const tpl = await openTemplate(cfg);
   try {
-    console.log(`จับภาพ ${total} เฟรม (${cfg.resolution.join('x')} @ ${cfg.fps}fps, ${cfg.duration}s)`);
+    if (!onProgress) console.log(`จับภาพ ${total} เฟรม (${cfg.resolution.join('x')} @ ${cfg.fps}fps, ${cfg.duration}s)`);
     for (let i = 0; i < total; i++) {
       const buf = await tpl.shoot(i / cfg.fps);
       await writeFile(path.join(framesDir, `frame-${String(i).padStart(5, '0')}.png`), buf);
-      progressBar(i + 1, total);
+      if (onProgress) onProgress({ phase: 'capture', done: i + 1, total });
+      else progressBar(i + 1, total);
     }
   } finally {
     await tpl.close();
@@ -95,7 +99,8 @@ export async function renderVideo(cfg, outDir) {
         outputs.push(`${dir}/`);
         continue;
       }
-      console.log(`เข้ารหัส ${format} ...`);
+      if (onProgress) onProgress({ phase: 'encode', format, done: total, total });
+      else console.log(`เข้ารหัส ${format} ...`);
       outputs.push(await encodeVideo(format, framesDir, cfg.fps, base));
     }
   } finally {

@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { readFile, writeFile, readdir, access } from 'node:fs/promises';
+import { readFile, writeFile, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
-import { startServer } from './server.js';
+import { startStudio, listTemplates } from './studio.js';
 import { composite, run } from './encode.js';
 
 const HELP = `
 Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่อนไหวพื้นหลังโปร่งใสสำหรับวางทับคลิป
 
 คำสั่ง:
-  preview                 เปิดดูตัวอย่างในเบราว์เซอร์ (แก้ config แล้วรีเฟรชได้เลย)
-  edit                    เปิดหน้าแก้ไขแบบลากวาง แล้วบันทึกกลับลงไฟล์ config
+  start                   เปิดหน้า Studio ในเบราว์เซอร์: รวมงานทั้งหมด สร้าง/ปรับแต่ง/ดูตัวอย่าง/เรนเดอร์
+  preview                 เหมือน start แต่บอกลิงก์หน้าดูตัวอย่างของ config ที่เลือก
+  edit                    เหมือน start แต่บอกลิงก์หน้าปรับแต่งของ config ที่เลือก
   render                  เรนเดอร์ไฟล์ overlay ตาม config
   render --still [วินาที]  เรนเดอร์ภาพนิ่ง PNG โปร่งใส (ค่าเริ่มต้นที่วินาทีที่ 1)
   composite --bg <ไฟล์>    ซ้อน overlay ลงบนคลิป/รูป เพื่อตรวจผล (ได้ไฟล์ .mp4)
@@ -28,7 +29,7 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
       --fps <ตัวเลข>       เฟรมต่อวินาที (ทับค่าใน config)
       --intro             ใส่แอนิเมชันเข้าฉากตอนต้น (ไฟล์จะไม่วนลูปเนียน)
       --overlay <ไฟล์>     ไฟล์ overlay ที่ใช้กับ composite (ค่าเริ่มต้น: output/<name>.mov)
-  -p, --port <ตัวเลข>      พอร์ตของ preview (ค่าเริ่มต้น: 5173)
+  -p, --port <ตัวเลข>      พอร์ตของ Studio (ค่าเริ่มต้น: 5173)
   -h, --help
 `;
 
@@ -70,18 +71,6 @@ async function loadRenderer() {
   }
 }
 
-async function listTemplates() {
-  const dirs = await readdir(path.join(ROOT, 'templates'), { withFileTypes: true });
-  const out = [];
-  for (const d of dirs) {
-    if (!d.isDirectory() || d.name.startsWith('_')) continue;
-    const cfg = await readFile(path.join(ROOT, 'templates', d.name, 'default.config.json'), 'utf8')
-      .then(JSON.parse, () => ({}));
-    out.push({ name: d.name, description: cfg.description || '' });
-  }
-  return out;
-}
-
 async function main() {
   const { cmd, rest, values, overrides } = parse();
   if (!cmd || values.help) {
@@ -105,7 +94,7 @@ async function main() {
     if (values.vertical) data.resolution = [1080, 1920];
     await writeFile(out, JSON.stringify(data, null, 2) + '\n');
     console.log(`สร้าง ${target} แล้ว ต่อไป:`);
-    console.log(`  npm run edit -- -c ${target}     แก้ด้วยการลากวาง`);
+    console.log('  npm start                        เปิด Studio แล้วกด "ปรับแต่ง" ที่งานนี้');
     console.log(`  npm run render -- -c ${target}   เรนเดอร์`);
     return;
   }
@@ -116,33 +105,20 @@ async function main() {
   const load = async () => ({ name: nameFromConfig, ...(await loadConfig(configPath, overrides)) });
 
   switch (cmd) {
-    case 'preview': {
-      await load(); // ตรวจ config ก่อนเปิดเซิร์ฟเวอร์
-      const { url } = await startServer(load, Number(values.port));
-      console.log(`เปิดดูตัวอย่างได้ที่: ${url}`);
-      console.log('  ใส่ ?bg=assets/รูปหรือคลิป เพื่อดูบนพื้นหลังจริง | กด Ctrl+C เพื่อปิด');
-      return;
-    }
+    case 'start':
+    case 'preview':
     case 'edit': {
-      await load();
-      const onSave = async (data) => {
-        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('config ต้องเป็นออบเจกต์');
-        delete data.name;
-        const before = await readFile(configPath, 'utf8');
-        await writeFile(configPath, JSON.stringify(data, null, 2) + '\n');
-        try {
-          await loadConfig(configPath);
-        } catch (err) {
-          await writeFile(configPath, before); // ค่าที่ส่งมาใช้ไม่ได้ คืนไฟล์เดิม
-          throw err;
-        }
-        console.log(`บันทึก ${path.relative(process.cwd(), configPath)} แล้ว (${new Date().toLocaleTimeString()})`);
-      };
-      // หน้าแก้ไขต้องเห็นค่าในไฟล์จริง จึงไม่ใช้ค่าที่ทับจาก command line
-      const loadRaw = async () => ({ name: nameFromConfig, ...(await loadConfig(configPath)) });
-      const { url } = await startServer(loadRaw, Number(values.port), { onSave });
-      console.log(`หน้าแก้ไข: ${url}/?mode=edit`);
-      console.log(`  ไฟล์ที่แก้: ${path.relative(process.cwd(), configPath)} | กด Ctrl+C เพื่อปิด`);
+      // config ที่อยู่ในโฟลเดอร์โปรเจกต์ใช้ชื่อไฟล์เป็นชื่องาน ส่วนที่อยู่ที่อื่นส่งเข้าไปเป็น extra
+      const inRoot = path.dirname(configPath) === ROOT && configPath.endsWith('.config.json');
+      const extra = inRoot ? {} : { [nameFromConfig]: configPath };
+      const { url } = await startStudio({ port: Number(values.port), extra, loadRenderer });
+      const cfg = await load().catch(() => null);
+      console.log(`\n  Animated-Overlay Studio: ${url}\n`);
+      if (cfg && cmd !== 'start') {
+        const page = `${url}/templates/${cfg.template}/index.html?c=${encodeURIComponent(nameFromConfig)}`;
+        console.log(`  ${cmd === 'edit' ? 'หน้าปรับแต่ง' : 'หน้าดูตัวอย่าง'}: ${page}${cmd === 'edit' ? '&mode=edit' : ''}\n`);
+      }
+      console.log('  เปิดลิงก์ด้านบนในเบราว์เซอร์ | กด Ctrl+C เพื่อปิด');
       return;
     }
     case 'render': {

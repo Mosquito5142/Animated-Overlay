@@ -45,6 +45,12 @@ html.mode-preview #viewport.has-bg { background: #000; }
   background: #3a3a44; color: #fff; cursor: pointer;
 }
 #preview-ui input[type=range] { flex: 1; }
+#preview-ui .pv-btn {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 6px;
+  background: #3a3a44; color: #fff; text-decoration: none; white-space: nowrap;
+}
+#preview-ui .pv-btn.primary { background: #2563eb; }
+html.embed, html.embed body { background: transparent; overflow: hidden; }
 #preview-ui [data-time] { min-width: 120px; font-variant-numeric: tabular-nums; text-align: right; }
 
 /* ---------- เฉพาะหน้าแก้ไข (mode=edit) ---------- */
@@ -108,3 +114,6 @@ html.mode-edit #stage img { pointer-events: none; }
 #editor-panel button.danger { background: #7f1d1d; }
 #editor-panel select { flex: 1; padding: 5px 8px; border: 1px solid #3a3a44; border-radius: 5px; background: #18181d; color: #fff; font: inherit; }
 .ed-check { margin-top: 8px; font-size: 12px; color: #c4c7cf; cursor: pointer; }
+a.ed-link { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; background: #3a3a44; color: #fff; text-decoration: none; }
+.ed-nav { margin-top: 8px; flex-wrap: wrap; }
+.ed-warn { margin-top: 8px; font-size: 12px; color: #fbbf24; }

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Animated-Overlay Studio</title>
+  <link rel="stylesheet" href="/studio/studio.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Animated-Overlay Studio</h1>
+      <p class="muted">สร้างกรอบและโฆษณาเคลื่อนไหวพื้นหลังโปร่งใส แล้วเอาไปวางบน Track บนสุดของโปรแกรมตัดต่อ</p>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="sec-head">
+        <h2>งานของฉัน</h2>
+        <span class="muted">แต่ละงานคือไฟล์ <code>&lt;ชื่อ&gt;.config.json</code> ในโฟลเดอร์โปรเจกต์</span>
+      </div>
+      <div id="configs" class="grid"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>สร้างงานใหม่จากเทมเพลต</h2>
+        <span class="muted">เลือกสไตล์ ตั้งชื่อ แล้วไปปรับแต่งให้เป็นแบบของคุณ</span>
+      </div>
+      <div id="templates" class="grid"></div>
+    </section>
+
+    <section class="help">
+      <h2>เอาไปใช้ในโปรแกรมตัดต่อ</h2>
+      <ol>
+        <li>กด <b>🎬 เรนเดอร์</b> จะได้ไฟล์ในโฟลเดอร์ <code>output/</code></li>
+        <li>วางคลิปเกมไว้ <b>Track 1</b> แล้วลากไฟล์ <code>.mov</code> ไปไว้ <b>Track บนสุด</b></li>
+        <li>ไฟล์วนลูปได้เนียน ถ้าคลิปยาวกว่าให้วางต่อกันหรือตั้ง Loop</li>
+        <li>ถ้าโปรแกรมไม่เห็นพื้นหลังโปร่งใส ให้ลองใช้ไฟล์ <code>.webm</code> แทน</li>
+      </ol>
+    </section>
+  </main>
+
+  <script type="module" src="/studio/studio.js"></script>
+</body>
+</html>

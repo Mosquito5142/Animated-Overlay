@@ -23,13 +23,9 @@ const TYPES = {
   '.mov': 'video/quicktime',
 };
 
-/**
- * เซิร์ฟเวอร์ไฟล์ในโฟลเดอร์โปรเจกต์ (ใช้ทั้งตอน preview และ render)
- * getConfig() ถูกเรียกทุกครั้งที่ขอ /__config.json จึงแก้ config แล้วรีเฟรชดูได้ทันที
- */
 const MAX_BODY = 1024 * 1024;
 
-function readJson(req) {
+export function readJson(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
@@ -51,17 +47,28 @@ function readJson(req) {
   });
 }
 
+export function sendJson(res, code, body) {
+  res.writeHead(code, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' });
+  res.end(JSON.stringify(body));
+}
+
 /**
- * onSave (ถ้ามี) เปิดใช้ POST /__save สำหรับหน้าแก้ไข: รับ config ใหม่แล้วให้ผู้เรียกเขียนลงไฟล์
+ * เซิร์ฟเวอร์ไฟล์ในโฟลเดอร์โปรเจกต์ (ใช้ทั้งตอน studio และ render)
+ * - getConfig(url) ถูกเรียกทุกครั้งที่ขอ /__config.json จึงแก้ config แล้วรีเฟรชดูได้ทันที
+ * - onSave(data, url) (ถ้ามี) เปิดใช้ POST /__save สำหรับหน้าปรับแต่ง
+ * - handle(req, res, url) (ถ้ามี) ให้ studio เพิ่ม API ของตัวเอง คืน true ถ้าตอบไปแล้ว
+ * - home (ถ้ามี) หน้าที่จะเปิดเมื่อเข้า /
  */
-export function startServer(getConfig, port = 0, { onSave } = {}) {
+export function startServer(getConfig, port = 0, { onSave, handle, home } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
       if (url.pathname === '/__config.json') {
-        const cfg = await getConfig();
-        res.writeHead(200, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' });
-        res.end(JSON.stringify(cfg));
+        try {
+          sendJson(res, 200, await getConfig(url));
+        } catch (err) {
+          sendJson(res, 400, { error: err.message });
+        }
         return;
       }
       if (url.pathname === '/__save') {
@@ -69,20 +76,22 @@ export function startServer(getConfig, port = 0, { onSave } = {}) {
           res.writeHead(405).end();
           return;
         }
-        const send = (code, body) => {
-          res.writeHead(code, { 'content-type': TYPES['.json'] });
-          res.end(JSON.stringify(body));
-        };
         try {
-          await onSave(await readJson(req));
-          send(200, { ok: true });
+          await onSave(await readJson(req), url);
+          sendJson(res, 200, { ok: true });
         } catch (err) {
-          send(400, { error: err.message });
+          sendJson(res, 400, { error: err.message });
         }
         return;
       }
+      if (handle && (await handle(req, res, url))) return;
+      if (url.pathname === '/' && home) {
+        res.writeHead(302, { location: home });
+        res.end();
+        return;
+      }
       if (url.pathname === '/') {
-        const cfg = await getConfig();
+        const cfg = await getConfig(url);
         res.writeHead(302, { location: `/templates/${cfg.template}/index.html${url.search}` });
         res.end();
         return;
