@@ -10,6 +10,8 @@
   "scripts": {
     "preview": "node src/cli.js preview",
     "preview:vertical": "node src/cli.js preview -c vertical.config.json",
+    "edit": "node src/cli.js edit",
+    "edit:vertical": "node src/cli.js edit -c vertical.config.json",
     "render": "node src/cli.js render",
     "render:vertical": "node src/cli.js render -c vertical.config.json",
     "still": "node src/cli.js render --still",

@@ -7,7 +7,7 @@
 // เพื่อให้เรนเดอร์ได้ผลเหมือนเดิมทุกครั้ง และวนลูปได้ไม่มีรอยต่อ
 
 const params = new URLSearchParams(location.search);
-export const mode = params.get('mode') === 'render' ? 'render' : 'preview';
+export const mode = ['render', 'edit'].includes(params.get('mode')) ? params.get('mode') : 'preview';
 
 export const clamp01 = (x) => Math.min(1, Math.max(0, x));
 export const lerp = (a, b, p) => a + (b - a) * p;
@@ -82,29 +82,33 @@ export async function run(template) {
     node.style.width = `${W}px`;
     node.style.height = `${H}px`;
   }
-  // เลย์เอาต์: "auto" = เลือกตามขนาด (สูงกว่ากว้าง → portrait)
-  const layout = config.layout && config.layout !== 'auto' ? config.layout : H > W ? 'portrait' : 'landscape';
-  stage.classList.add(layout);
-  if (config.theme) {
-    for (const [k, v] of Object.entries(config.theme)) {
-      stage.style.setProperty(`--${k}`, v);
-    }
-  }
 
   const ctx = {
-    config,
     width: W,
     height: H,
     duration: config.duration,
     cycle: makeCycle(config.duration),
-    intro: !!config.intro,
-    layout,
   };
 
-  await template.build(stage, ctx);
-  await document.fonts.ready;
-  await waitForImages(stage);
-  if (template.measure) template.measure(stage, ctx);
+  // สร้างทุกชิ้นจาก config (หน้าแก้ไขเรียกซ้ำได้ทุกครั้งที่ config เปลี่ยน)
+  const mount = async (cfg) => {
+    ctx.config = cfg;
+    ctx.intro = !!cfg.intro && mode !== 'edit';
+    // เลย์เอาต์: "auto" = เลือกตามขนาด (สูงกว่ากว้าง → portrait)
+    ctx.layout = cfg.layout && cfg.layout !== 'auto' ? cfg.layout : H > W ? 'portrait' : 'landscape';
+    stage.replaceChildren();
+    stage.className = ctx.layout;
+    stage.removeAttribute('style');
+    stage.style.width = `${W}px`;
+    stage.style.height = `${H}px`;
+    for (const [k, v] of Object.entries(cfg.theme || {})) stage.style.setProperty(`--${k}`, v);
+
+    await template.build(stage, ctx);
+    await document.fonts.ready;
+    await waitForImages(stage);
+    if (template.measure) template.measure(stage, ctx);
+  };
+  await mount(config);
 
   const renderFrame = (t) => template.frame(t, ctx);
   renderFrame(0);
@@ -112,21 +116,30 @@ export async function run(template) {
   window.overlay = { ready: true, config, renderFrame };
 
   if (mode === 'preview') startPreview(stage, ctx, renderFrame);
+  if (mode === 'edit') {
+    const { startEditor } = await import('./editor.js');
+    await startEditor({ stage, ctx, template, mount, renderFrame });
+  }
+}
+
+/** ใส่รูป/คลิปพื้นหลังใต้ overlay (เฉพาะ preview/edit ไม่ติดไปในไฟล์ที่เรนเดอร์) */
+export function setPreviewBackground(bg) {
+  const viewport = document.getElementById('viewport');
+  const stage = document.getElementById('stage');
+  viewport.querySelector('.preview-bg')?.remove();
+  viewport.classList.toggle('has-bg', !!bg);
+  if (!bg) return;
+  const isVideo = /\.(mp4|webm|mov)$/i.test(bg);
+  const media = el(isVideo ? 'video' : 'img', 'preview-bg');
+  media.src = bg.startsWith('/') || /^https?:/.test(bg) ? bg : `/${bg}`;
+  if (isVideo) Object.assign(media, { muted: true, loop: true, autoplay: true, playsInline: true });
+  viewport.insertBefore(media, stage);
 }
 
 function startPreview(stage, ctx, renderFrame) {
   const { width: W, height: H, duration: D } = ctx;
-  const bg = params.get('bg') || ctx.config.preview?.background;
   const viewport = document.getElementById('viewport');
-  if (bg) {
-    const isVideo = /\.(mp4|webm|mov)$/i.test(bg);
-    const media = el(isVideo ? 'video' : 'img', 'preview-bg');
-    viewport.insertBefore(media, stage);
-    media.src = bg.startsWith('/') || /^https?:/.test(bg) ? bg : `/${bg}`;
-    if (isVideo) Object.assign(media, { muted: true, loop: true, autoplay: true, playsInline: true });
-    viewport.classList.add('has-bg');
-  }
-
+  setPreviewBackground(params.get('bg') || ctx.config.preview?.background);
   const fit = () => {
     const bar = 56;
     const s = Math.min(window.innerWidth / W, (window.innerHeight - bar) / H);

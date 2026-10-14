@@ -27,7 +27,34 @@ const TYPES = {
  * เซิร์ฟเวอร์ไฟล์ในโฟลเดอร์โปรเจกต์ (ใช้ทั้งตอน preview และ render)
  * getConfig() ถูกเรียกทุกครั้งที่ขอ /__config.json จึงแก้ config แล้วรีเฟรชดูได้ทันที
  */
-export function startServer(getConfig, port = 0) {
+const MAX_BODY = 1024 * 1024;
+
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        reject(new Error('ข้อมูลใหญ่เกินไป'));
+        req.destroy();
+      } else chunks.push(c);
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        reject(new Error('JSON ไม่ถูกต้อง'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+/**
+ * onSave (ถ้ามี) เปิดใช้ POST /__save สำหรับหน้าแก้ไข: รับ config ใหม่แล้วให้ผู้เรียกเขียนลงไฟล์
+ */
+export function startServer(getConfig, port = 0, { onSave } = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://localhost');
@@ -35,6 +62,23 @@ export function startServer(getConfig, port = 0) {
         const cfg = await getConfig();
         res.writeHead(200, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' });
         res.end(JSON.stringify(cfg));
+        return;
+      }
+      if (url.pathname === '/__save') {
+        if (!onSave || req.method !== 'POST') {
+          res.writeHead(405).end();
+          return;
+        }
+        const send = (code, body) => {
+          res.writeHead(code, { 'content-type': TYPES['.json'] });
+          res.end(JSON.stringify(body));
+        };
+        try {
+          await onSave(await readJson(req));
+          send(200, { ok: true });
+        } catch (err) {
+          send(400, { error: err.message });
+        }
         return;
       }
       if (url.pathname === '/') {

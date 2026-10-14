@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
 import { startServer } from './server.js';
@@ -11,6 +12,7 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
 
 คำสั่ง:
   preview                 เปิดดูตัวอย่างในเบราว์เซอร์ (แก้ config แล้วรีเฟรชได้เลย)
+  edit                    เปิดหน้าแก้ไขแบบลากวาง แล้วบันทึกกลับลงไฟล์ config
   render                  เรนเดอร์ไฟล์ overlay ตาม config
   render --still [วินาที]  เรนเดอร์ภาพนิ่ง PNG โปร่งใส (ค่าเริ่มต้นที่วินาทีที่ 1)
   composite --bg <ไฟล์>    ซ้อน overlay ลงบนคลิป/รูป เพื่อตรวจผล (ได้ไฟล์ .mp4)
@@ -70,6 +72,28 @@ async function main() {
       const { url } = await startServer(load, Number(values.port));
       console.log(`เปิดดูตัวอย่างได้ที่: ${url}`);
       console.log('  ใส่ ?bg=assets/รูปหรือคลิป เพื่อดูบนพื้นหลังจริง | กด Ctrl+C เพื่อปิด');
+      return;
+    }
+    case 'edit': {
+      await load();
+      const onSave = async (data) => {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('config ต้องเป็นออบเจกต์');
+        delete data.name;
+        const before = await readFile(configPath, 'utf8');
+        await writeFile(configPath, JSON.stringify(data, null, 2) + '\n');
+        try {
+          await loadConfig(configPath);
+        } catch (err) {
+          await writeFile(configPath, before); // ค่าที่ส่งมาใช้ไม่ได้ คืนไฟล์เดิม
+          throw err;
+        }
+        console.log(`บันทึก ${path.relative(process.cwd(), configPath)} แล้ว (${new Date().toLocaleTimeString()})`);
+      };
+      // หน้าแก้ไขต้องเห็นค่าในไฟล์จริง จึงไม่ใช้ค่าที่ทับจาก command line
+      const loadRaw = async () => ({ name: nameFromConfig, ...(await loadConfig(configPath)) });
+      const { url } = await startServer(loadRaw, Number(values.port), { onSave });
+      console.log(`หน้าแก้ไข: ${url}/?mode=edit`);
+      console.log(`  ไฟล์ที่แก้: ${path.relative(process.cwd(), configPath)} | กด Ctrl+C เพื่อปิด`);
       return;
     }
     case 'render': {

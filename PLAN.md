@@ -69,13 +69,13 @@ Animated-Overlay/
 ├── overlay.config.json          # ไฟล์เดียวที่ผู้ใช้ต้องแก้
 ├── assets/                      # ฟอนต์ Kanit, โลโก้ / รูปสปอนเซอร์ (.png/.svg โปร่งใส)
 ├── templates/
-│   ├── _runtime/                # โค้ดกลาง: โหลด config, renderFrame(t), หน้า preview
+│   ├── _runtime/                # โค้ดกลาง: โหลด config, renderFrame(t), หน้า preview, หน้าแก้ไข (editor.js)
 │   └── sponsor-gaming/          # เทมเพลตแรก (ตามภาพตัวอย่าง)
 │       ├── index.html
 │       ├── style.css
 │       └── timeline.js          # renderFrame(t) ของแต่ละชิ้นส่วน
 ├── src/
-│   ├── cli.js                   # คำสั่ง preview / render / composite / check
+│   ├── cli.js                   # คำสั่ง preview / edit / render / composite / check
 │   ├── server.js                # เซิร์ฟเวอร์ไฟล์ในเครื่อง (ใช้ทั้ง preview และ render)
 │   ├── render.js                # Playwright จับเฟรม
 │   ├── encode.js                # เรียก FFmpeg
@@ -149,7 +149,7 @@ npm run composite -- --bg clip.mp4   # ซ้อนลงคลิปจริ�
 - [x] Preset หลายชุด (เช่น สปอนเซอร์ A / B) เลือกด้วย `--config`
 
 ### เฟส 4: ต่อยอด (ทำหรือไม่ทำก็ได้)
-- [ ] หน้าแก้ไขแบบ GUI ลากวางตำแหน่งชิ้นส่วน แล้วบันทึกกลับเป็น config
+- [x] หน้าแก้ไขแบบ GUI ลากวางตำแหน่งชิ้นส่วน แล้วบันทึกกลับเป็น config (`npm run edit`): ลากย้าย, ปรับขนาด, เปิด/ปิด, แก้ข้อความ/สี, ย้อนกลับ
 - [ ] ใช้ Overlay เดียวกันเป็น Browser Source ใน OBS ตอนไลฟ์ (เพราะเป็น HTML อยู่แล้ว)
 - [x] สคริปต์ FFmpeg ที่ซ้อน Overlay ลงคลิปให้เลย (`npm run composite -- --bg clip.mp4`) ไม่ต้องเปิดโปรแกรมตัดต่อ
 - [ ] จัดชุดคลิปหลายไฟล์พร้อมกัน (batch)
@@ -169,6 +169,6 @@ npm run composite -- --bg clip.mp4   # ซ้อนลงคลิปจริ�
 ---
 
 ## 8. ขั้นต่อไป
-เฟส 1–2 เสร็จแล้ว ส่วนเฟส 3–4 ทำไปบางส่วน
+เฟส 1–2 เสร็จแล้ว เฟส 3–4 ทำไปเกือบหมด
 ขั้นต่อไปคือให้ผู้ใช้ลองใส่ `output/overlay.mov` ใน FilmCraft แล้วเปลี่ยนโลโก้/ข้อความใน config เป็นของจริง
-จากนั้นทำหน้าแก้ไขแบบลากวาง
+งานที่เหลือในเฟส 4 คือ Browser Source สำหรับ OBS และทำหลายไฟล์พร้อมกัน (batch)

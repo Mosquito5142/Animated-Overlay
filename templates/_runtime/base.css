@@ -46,3 +46,62 @@ html.mode-preview #viewport.has-bg { background: #000; }
 }
 #preview-ui input[type=range] { flex: 1; }
 #preview-ui [data-time] { min-width: 120px; font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- เฉพาะหน้าแก้ไข (mode=edit) ---------- */
+html.mode-edit, html.mode-edit body { background: #1b1b1f; height: 100%; overflow: hidden; }
+html.mode-edit body {
+  display: flex; gap: 16px; padding: 16px; box-sizing: border-box;
+  font: 14px/1.4 system-ui, sans-serif; color: #e6e6ea;
+}
+html.mode-edit #preview-wrap { position: relative; flex: none; overflow: hidden; border-radius: 6px; }
+html.mode-edit #viewport {
+  background-color: #2a2a30;
+  background-image:
+    linear-gradient(45deg, #34343b 25%, transparent 25%),
+    linear-gradient(-45deg, #34343b 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #34343b 75%),
+    linear-gradient(-45deg, transparent 75%, #34343b 75%);
+  background-size: 48px 48px;
+  background-position: 0 0, 0 24px, 24px -24px, -24px 0;
+}
+html.mode-edit #viewport.has-bg { background: #000; }
+html.mode-edit #stage [data-key] { cursor: move; user-select: none; }
+html.mode-edit #stage [data-key]:hover { outline: 3px dashed rgba(255, 255, 255, .45); outline-offset: 4px; }
+html.mode-edit #stage [data-key].ed-selected { outline: 4px dashed #22d3ee; outline-offset: 4px; }
+html.mode-edit #stage img { pointer-events: none; }
+
+#editor-panel {
+  width: 340px; flex: none; overflow-y: auto;
+  background: #24242b; border-radius: 8px; padding: 14px; box-sizing: border-box;
+}
+#editor-panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #9aa0ad; }
+#editor-panel button {
+  padding: 6px 12px; border: 0; border-radius: 6px; background: #3a3a44; color: #fff; cursor: pointer; font: inherit;
+}
+#editor-panel button.primary { background: #2563eb; }
+#editor-panel button:disabled { opacity: .5; }
+#editor-panel input[type=text], #editor-panel input[type=number], #editor-panel textarea {
+  flex: 1; min-width: 0; padding: 5px 8px; border: 1px solid #3a3a44; border-radius: 5px;
+  background: #18181d; color: #fff; font: inherit;
+}
+#editor-panel input[type=color] { width: 48px; height: 30px; border: 0; background: none; padding: 0; }
+#editor-panel input[type=range] { flex: 1; }
+#editor-panel textarea { resize: vertical; }
+#editor-panel textarea.bad { border-color: #ef4444; }
+.ed-head { position: sticky; top: -14px; margin: -14px -14px 12px; padding: 14px; background: #24242b; border-bottom: 1px solid #33333c; z-index: 1; }
+.ed-title { font-weight: 700; font-size: 16px; }
+.ed-status { font-size: 12px; color: #4ade80; margin: 2px 0 8px; }
+.ed-status.dirty { color: #fbbf24; }
+.ed-sec { border-bottom: 1px solid #33333c; padding: 10px 0 12px; }
+.ed-row { display: flex; gap: 8px; align-items: center; }
+.ed-list { display: flex; flex-direction: column; gap: 2px; }
+.ed-item { display: flex; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 5px; }
+.ed-item span { flex: 1; cursor: pointer; }
+.ed-item.active { background: #164e63; }
+.ed-field { display: block; margin-top: 8px; }
+.ed-label { display: block; font-size: 12px; color: #9aa0ad; margin-bottom: 3px; }
+.ed-subtitle { font-weight: 700; font-size: 15px; }
+.ed-coords { font-size: 12px; color: #22d3ee; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.ed-num { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+.ed-small { max-width: 90px; }
+.ed-hint { font-size: 12px; color: #9aa0ad; white-space: pre-line; margin: 6px 0 0; }

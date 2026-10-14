@@ -159,6 +159,20 @@ export default {
       n.notice = { root, msgs, each: c.secondsEach ?? 4 };
       applyStyle(root, c.style);
     }
+
+    // ให้หน้าแก้ไขรู้ว่า element ไหนคือชิ้นไหนใน config
+    for (const [key, node] of Object.entries(n)) node.root.dataset.key = key;
+  },
+
+  // ชื่อที่แสดงในหน้าแก้ไข (npm run edit)
+  labels: {
+    highlight: 'ป้าย HIGHLIGHT',
+    topDonate: 'TOP DONATE',
+    sponsorLogo: 'โลโก้สปอนเซอร์',
+    webcamFrame: 'กรอบกล้อง',
+    promoBar: 'แถบโปรโมชัน',
+    ticker: 'ข้อความวิ่ง',
+    notice: 'กล่องประกาศ',
   },
 
   // วัดขนาดหลังโหลดฟอนต์/รูปเสร็จ
