@@ -49,7 +49,7 @@ overlay.config.json  ──►  เทมเพลต HTML/CSS/JS  ──►  Re
 เรนเดอร์ทุกครั้งจะได้ผลเหมือนเดิมเป๊ะ ไม่มีเฟรมตก และใช้โค้ดเดียวกันได้ทั้งตอนพรีวิวและตอนเรนเดอร์
 
 ### เทคโนโลยี
-- **ภาษา:** Node.js (TypeScript)
+- **ภาษา:** Node.js (JavaScript ESM ไม่ต้อง build)
 - **เทมเพลต:** HTML + CSS + JS ล้วน (ใช้ GSAP timeline แบบ `seek(t)` ได้ถ้าต้องการ)
 - **จับภาพ:** Playwright + Chromium (มีในเครื่องแล้ว) ใช้ `screenshot({ omitBackground: true })` ได้ PNG โปร่งใสทีละเฟรม
 - **เข้ารหัสวิดีโอ:** FFmpeg
@@ -67,21 +67,23 @@ Animated-Overlay/
 ├── PLAN.md
 ├── package.json
 ├── overlay.config.json          # ไฟล์เดียวที่ผู้ใช้ต้องแก้
-├── assets/                      # โลโก้ / รูปสปอนเซอร์ (.png โปร่งใส)
+├── assets/                      # ฟอนต์ Kanit, โลโก้ / รูปสปอนเซอร์ (.png/.svg โปร่งใส)
 ├── templates/
+│   ├── _runtime/                # โค้ดกลาง: โหลด config, renderFrame(t), หน้า preview
 │   └── sponsor-gaming/          # เทมเพลตแรก (ตามภาพตัวอย่าง)
 │       ├── index.html
 │       ├── style.css
 │       └── timeline.js          # renderFrame(t) ของแต่ละชิ้นส่วน
 ├── src/
-│   ├── cli.ts                   # คำสั่ง preview / render
-│   ├── render.ts                # Playwright จับเฟรม
-│   ├── encode.ts                # เรียก FFmpeg
-│   └── config.ts                # อ่านและตรวจ config
+│   ├── cli.js                   # คำสั่ง preview / render / composite / check
+│   ├── server.js                # เซิร์ฟเวอร์ไฟล์ในเครื่อง (ใช้ทั้ง preview และ render)
+│   ├── render.js                # Playwright จับเฟรม
+│   ├── encode.js                # เรียก FFmpeg
+│   └── config.js                # อ่านและตรวจ config
 └── output/                      # ไฟล์ที่เรนเดอร์ได้
 ```
 
-### ตัวอย่าง `overlay.config.json`
+### ตัวอย่าง `overlay.config.json` (ฉบับย่อ ฉบับเต็มอยู่ในไฟล์จริง)
 ```json
 {
   "template": "sponsor-gaming",
@@ -89,30 +91,31 @@ Animated-Overlay/
   "fps": 30,
   "duration": 10,
   "loop": true,
-  "format": ["prores4444", "webm"],
+  "format": ["prores", "webm"],
   "theme": { "primary": "#E3122C", "accent": "#FFD400", "font": "Kanit" },
   "elements": {
     "highlight": { "enabled": true, "text": "HIGHLIGHT" },
     "topDonate": { "enabled": true, "name": "TNP", "amount": 20000, "currency": "฿" },
-    "sponsorLogo": { "enabled": true, "image": "assets/overtime.png" },
+    "sponsorLogo": { "enabled": true, "image": "assets/logos/sponsor-placeholder.svg" },
     "webcamFrame": { "enabled": true, "channel": "BANK", "label": "OVERTIME", "live": true,
-                     "rect": [10, 330, 210, 180] },
-    "promoBar": { "enabled": true, "logo": "assets/game-logo.png",
+                     "camSize": [398, 292] },
+    "promoBar": { "enabled": true, "logo": "assets/logos/game-placeholder.svg",
                   "text": "แพ็คใหญ่จุใจ", "price": "8,230", "oldPrice": "29,999", "unit": "THB" },
-    "ticker": { "enabled": true, "text": "ระบบ Drop Link • เติมเกมราคาพิเศษ • กดติดตามช่อง" }
+    "ticker": { "enabled": true, "tag": "PROMO", "items": ["เติมเกมราคาพิเศษ", "กดติดตามช่อง"] }
   }
 }
 ```
 
 ---
 
-## 5. วิธีใช้งาน (เป้าหมาย)
+## 5. วิธีใช้งาน
 
 ```bash
 npm install
 npm run preview                 # เปิดเบราว์เซอร์ดู Overlay ขยับจริง แก้ config แล้วรีเฟรชดูได้เลย
 npm run render                  # ได้ output/overlay.mov (+ .webm)
-npm run render -- --still       # ได้ output/overlay.png แบบภาพนิ่ง
+npm run still                   # ได้ output/overlay.png แบบภาพนิ่ง
+npm run composite -- --bg clip.mp4   # ซ้อนลงคลิปจริงเพื่อตรวจผล
 ```
 
 แล้วใน FilmCraft:
@@ -126,28 +129,29 @@ npm run render -- --still       # ได้ output/overlay.png แบบภา�
 ## 6. แผนการทำงานเป็นเฟส
 
 ### เฟส 1: โครงพื้นฐาน (MVP)
-- [ ] ตั้งโปรเจกต์ Node/TS, ตรวจว่ามี FFmpeg ในเครื่อง
-- [ ] `render.ts`: เปิดหน้า HTML ที่พื้นหลังโปร่งใส แล้วเรียก `renderFrame(t)` และจับ PNG ทีละเฟรม
-- [ ] `encode.ts`: รวมเฟรมเป็น ProRes 4444 / WebM alpha
-- [ ] เทมเพลตทดสอบ: กล่องเดียววิ่งเข้ามุมจอ → ตรวจว่าวางบนคลิปใน FilmCraft แล้วโปร่งใสจริง
+- [x] ตั้งโปรเจกต์ Node, ตรวจว่ามี FFmpeg ในเครื่อง (`npm run check`)
+- [x] `render.js`: เปิดหน้า HTML ที่พื้นหลังโปร่งใส แล้วเรียก `renderFrame(t)` และจับ PNG ทีละเฟรม
+- [x] `encode.js`: รวมเฟรมเป็น ProRes 4444 / WebM alpha (ตรวจแล้วว่ามี Alpha ทั้งสองแบบ)
+- [ ] **ให้ผู้ใช้ทดสอบ:** ลากไฟล์ใส่ FilmCraft แล้วดูว่าพื้นหลังโปร่งใสจริง
 - **เสร็จเมื่อ:** สั่ง `npm run render` แล้วได้ไฟล์ที่วางทับคลิปได้ และพื้นหลังไม่เป็นสีดำ
 
 ### เฟส 2: เทมเพลต `sponsor-gaming` (ตามภาพ)
-- [ ] ทำชิ้นส่วนที่ 1–6 ตามตารางในข้อ 2
-- [ ] ระบบ config: ข้อความ, รูป, สี, ฟอนต์ไทย (Kanit/Prompt), เปิด/ปิดชิ้นส่วน
-- [ ] แอนิเมชันเข้าตอนต้น (intro) + วนลูปไร้รอยต่อ
+- [x] ทำชิ้นส่วนที่ 1–7 ตามตารางในข้อ 2
+- [x] ระบบ config: ข้อความ, รูป, สี, ฟอนต์ไทย (Kanit ฝังในโปรเจกต์), เปิด/ปิดชิ้นส่วน, ย้ายตำแหน่งผ่าน `style`
+- [x] แอนิเมชันเข้าตอนต้น (`--intro`) + วนลูปไร้รอยต่อ (ตรวจแล้วว่าเฟรมที่ t=0 กับ t=duration เหมือนกันทุกพิกเซล)
 - **เสร็จเมื่อ:** ผลลัพธ์หน้าตาใกล้เคียงภาพตัวอย่าง และเปลี่ยนสปอนเซอร์ได้โดยแก้แค่ config
 
 ### เฟส 3: ใช้ง่ายขึ้น
-- [ ] หน้าพรีวิวมีพื้นหลังเป็นภาพ/คลิปตัวอย่าง ดูตำแหน่งได้ว่าบังเกมหรือเปล่า
-- [ ] ตัวเลือก `--still` export PNG นิ่ง
-- [ ] รองรับขนาด 1080×1920 (Shorts/TikTok) และ 2560×1440
-- [ ] Preset หลายชุด (เช่น สปอนเซอร์ A / B) เลือกด้วย `--config`
+- [x] หน้าพรีวิวมีพื้นหลังเป็นภาพ/คลิปตัวอย่าง (`?bg=` หรือ `preview.background`) มีปุ่มหยุดและแถบเลื่อนเวลา
+- [x] ตัวเลือก `--still` export PNG นิ่ง
+- [x] รองรับคลิปแนวตั้ง 1080×1920 (Shorts/TikTok/Reels): `vertical.config.json` + เลย์เอาต์ `portrait`
+- [ ] รองรับ 2560×1440 (ตอนนี้ตำแหน่งตั้งไว้สำหรับ 1920×1080)
+- [x] Preset หลายชุด (เช่น สปอนเซอร์ A / B) เลือกด้วย `--config`
 
 ### เฟส 4: ต่อยอด (ทำหรือไม่ทำก็ได้)
 - [ ] หน้าแก้ไขแบบ GUI ลากวางตำแหน่งชิ้นส่วน แล้วบันทึกกลับเป็น config
 - [ ] ใช้ Overlay เดียวกันเป็น Browser Source ใน OBS ตอนไลฟ์ (เพราะเป็น HTML อยู่แล้ว)
-- [ ] สคริปต์ FFmpeg ที่ซ้อน Overlay ลงคลิปให้เลย (`overlay=0:0`) ไม่ต้องเปิดโปรแกรมตัดต่อ
+- [x] สคริปต์ FFmpeg ที่ซ้อน Overlay ลงคลิปให้เลย (`npm run composite -- --bg clip.mp4`) ไม่ต้องเปิดโปรแกรมตัดต่อ
 - [ ] จัดชุดคลิปหลายไฟล์พร้อมกัน (batch)
 
 ---
@@ -165,5 +169,6 @@ npm run render -- --still       # ได้ output/overlay.png แบบภา�
 ---
 
 ## 8. ขั้นต่อไป
-เริ่ม **เฟส 1** ก่อน: ทำ renderer + เทมเพลตทดสอบ แล้วลองวางใน FilmCraft ว่าพื้นหลังโปร่งใสถูกต้อง
-ถ้าผ่านค่อยไปเฟส 2 สร้างเทมเพลตเต็มตามภาพตัวอย่าง
+เฟส 1–2 เสร็จแล้ว ส่วนเฟส 3–4 ทำไปบางส่วน
+ขั้นต่อไปคือให้ผู้ใช้ลองใส่ `output/overlay.mov` ใน FilmCraft แล้วเปลี่ยนโลโก้/ข้อความใน config เป็นของจริง
+จากนั้นทำหน้าแก้ไขแบบลากวาง

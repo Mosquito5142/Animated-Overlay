@@ -1,0 +1,26 @@
+{
+  "name": "animated-overlay",
+  "version": "0.1.0",
+  "description": "สร้าง Animated Overlay พื้นหลังโปร่งใส (ProRes 4444 / WebM alpha / PNG) จากเทมเพลต HTML สำหรับวางทับคลิปในโปรแกรมตัดต่อ",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "overlay": "src/cli.js"
+  },
+  "scripts": {
+    "preview": "node src/cli.js preview",
+    "preview:vertical": "node src/cli.js preview -c vertical.config.json",
+    "render": "node src/cli.js render",
+    "render:vertical": "node src/cli.js render -c vertical.config.json",
+    "still": "node src/cli.js render --still",
+    "still:vertical": "node src/cli.js render --still -c vertical.config.json",
+    "composite": "node src/cli.js composite",
+    "check": "node src/cli.js check"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

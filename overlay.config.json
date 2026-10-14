@@ -1,0 +1,63 @@
+{
+  "template": "sponsor-gaming",
+  "resolution": [1920, 1080],
+  "fps": 30,
+  "duration": 10,
+  "intro": false,
+  "format": ["prores", "webm"],
+  "theme": {
+    "primary": "#e3122c",
+    "accent": "#ffd400",
+    "panel": "#141418",
+    "font": "Kanit"
+  },
+  "preview": {
+    "background": ""
+  },
+  "elements": {
+    "highlight": {
+      "enabled": true,
+      "text": "HIGHLIGHT"
+    },
+    "topDonate": {
+      "enabled": true,
+      "name": "TNP",
+      "amount": 20000,
+      "currency": "฿"
+    },
+    "sponsorLogo": {
+      "enabled": true,
+      "image": "assets/logos/sponsor-placeholder.svg"
+    },
+    "webcamFrame": {
+      "enabled": true,
+      "channel": "BANK",
+      "label": "OVERTIME",
+      "live": true,
+      "camSize": [398, 292]
+    },
+    "promoBar": {
+      "enabled": true,
+      "logo": "assets/logos/game-placeholder.svg",
+      "text": "แพ็คใหญ่จุใจ",
+      "oldPrice": "29,999",
+      "price": "8,230",
+      "unit": "THB",
+      "note": "ระบบ Drop Link"
+    },
+    "ticker": {
+      "enabled": true,
+      "tag": "PROMO",
+      "items": ["เติมเกมราคาพิเศษ ผ่านระบบ Drop Link", "กดติดตามช่องเพื่อไม่พลาดไฮไลต์", "โดเนทขึ้นจอได้ทุกวัน"],
+      "speed": 110
+    },
+    "notice": {
+      "enabled": true,
+      "secondsEach": 5,
+      "messages": [
+        { "title": "📢 ประกาศ", "text": "ไลฟ์ทุกวัน 2 ทุ่มเป็นต้นไป" },
+        { "title": "🎁 โปรโมชัน", "text": "แพ็คใหญ่จุใจ ลดเหลือ 8,230 THB" }
+      ]
+    }
+  }
+}

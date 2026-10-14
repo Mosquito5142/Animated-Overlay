@@ -1,0 +1,170 @@
+/* เทมเพลต sponsor-gaming — ตำแหน่งอ้างอิงจอ 1920x1080
+   ย้าย/ปรับขนาดแต่ละชิ้นได้จาก "style" ของแต่ละ element ใน overlay.config.json */
+
+#stage {
+  --primary: #e3122c;
+  --accent: #ffd400;
+  --panel: #141418;
+  --panel-2: #23232a;
+  --text: #ffffff;
+}
+
+.el { position: absolute; will-change: transform, opacity; }
+
+/* ---------- 1. HIGHLIGHT ---------- */
+.highlight {
+  top: 30px; right: 40px;
+  height: 86px; padding: 0 34px;
+  display: flex; align-items: center;
+  background: var(--primary);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45), inset 0 -6px 0 rgba(0, 0, 0, .18);
+  overflow: hidden;
+}
+.highlight .label {
+  font-size: 54px; font-weight: 900; font-style: italic;
+  letter-spacing: 1px; line-height: 1;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, .25);
+}
+
+/* แสงวิ่งผ่าน ใช้ร่วมกันหลายชิ้น */
+.shine {
+  position: absolute; top: -20%; bottom: -20%; left: 0;
+  width: 90px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+  transform: translateX(-200px) skewX(-20deg);
+  pointer-events: none;
+}
+
+/* ---------- 2. TOP DONATE ---------- */
+.donate {
+  top: 568px; right: 26px;
+  width: 280px; height: 74px;
+  display: flex;
+  background: var(--panel);
+  border: 2px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.donate .badge {
+  width: 86px; flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--primary);
+  font-weight: 800; font-style: italic; line-height: .95; text-align: center;
+  font-size: 17px;
+}
+.donate .crown { font-size: 22px; line-height: 1; color: var(--accent); margin-bottom: 2px; }
+.donate .body { flex: 1; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; }
+.donate .name { font-size: 26px; font-weight: 700; line-height: 1.05; }
+.donate .amount { font-size: 26px; font-weight: 700; line-height: 1.05; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* ---------- 3. Sponsor logo ---------- */
+.sponsor {
+  top: 668px; right: 22px;
+  width: 300px; height: 90px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: var(--panel);
+  border: 3px solid var(--primary);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sponsor img { max-width: 260px; max-height: 66px; object-fit: contain; }
+.sponsor .text { font-size: 40px; font-weight: 900; font-style: italic; letter-spacing: 1px; }
+.sponsor .sub { font-size: 14px; opacity: .75; }
+
+/* ---------- 4. Webcam frame ---------- */
+.webcam { left: 15px; top: 624px; }
+.webcam .bar {
+  display: flex; align-items: stretch; height: 38px;
+  border-radius: 6px 6px 0 0; overflow: hidden;
+  font-weight: 700;
+}
+.webcam .channel {
+  display: flex; align-items: center; padding: 0 16px;
+  background: var(--primary); font-size: 20px; font-style: italic; font-weight: 800;
+}
+.webcam .label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--panel); font-size: 20px; font-style: italic; font-weight: 800; letter-spacing: 1px;
+}
+.webcam .live {
+  display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  background: var(--panel-2); font-size: 15px;
+}
+.webcam .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary); }
+.webcam .cam { position: relative; }
+.webcam .cam svg { position: absolute; inset: 0; overflow: visible; }
+
+/* ---------- 5. Promo bar ---------- */
+.promo {
+  left: 15px; bottom: 12px;
+  height: 94px;
+  display: flex; align-items: center;
+  background: linear-gradient(90deg, var(--panel) 0%, rgba(20, 20, 24, .92) 100%);
+  border: 2px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.promo .logo {
+  height: 100%; padding: 0 16px; display: flex; align-items: center;
+  background: rgba(255, 255, 255, .04);
+}
+.promo .logo img { max-height: 74px; max-width: 160px; object-fit: contain; }
+.promo .text { padding: 0 22px; font-size: 44px; font-weight: 700; white-space: nowrap; }
+.promo .price-box {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  height: 100%; padding: 0 22px 0 18px;
+  background: rgba(0, 0, 0, .35);
+}
+.promo .old { font-size: 18px; color: #fff; background: #2563eb; padding: 0 8px; border-radius: 4px; line-height: 1.35; text-decoration: line-through; }
+.promo .price-row { display: flex; align-items: baseline; gap: 6px; transform-origin: left center; }
+.promo .price { font-size: 46px; font-weight: 700; line-height: 1; }
+.promo .unit { font-size: 18px; font-weight: 600; color: var(--accent); }
+.promo .note { font-size: 15px; opacity: .85; line-height: 1.2; }
+
+/* ---------- 6. Ticker ---------- */
+.ticker {
+  left: 720px; right: 380px; bottom: 26px;
+  height: 46px;
+  display: flex;
+  background: rgba(20, 20, 24, .88);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ticker .tag {
+  flex: none; display: flex; align-items: center; padding: 0 16px;
+  background: var(--primary); font-size: 20px; font-weight: 800; font-style: italic;
+}
+.ticker .window { position: relative; flex: 1; overflow: hidden; }
+.ticker .track { position: absolute; top: 0; bottom: 0; left: 0; display: flex; align-items: center; white-space: nowrap; }
+.ticker .item { font-size: 22px; font-weight: 600; padding-right: 60px; }
+.ticker .item::after { content: '◆'; color: var(--accent); margin-left: 60px; font-size: 14px; vertical-align: middle; }
+
+/* ---------- 7. Notice ---------- */
+.notice {
+  left: 15px; top: 534px;
+  width: 400px; height: 70px;
+}
+.notice .msg {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 16px;
+  background: rgba(20, 20, 24, .85);
+  border-left: 5px solid var(--accent);
+  border-radius: 6px;
+}
+.notice .title { font-size: 16px; color: var(--accent); font-weight: 600; line-height: 1.2; }
+.notice .line { font-size: 21px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ================= แนวตั้ง 1080x1920 (Shorts / TikTok / Reels) =================
+   เว้นขอบขวา ~150px ช่วงกลาง-ล่าง และขอบล่าง ~300px ไว้ให้ปุ่ม/คำบรรยายของแอป */
+#stage.portrait .highlight { top: 150px; right: 40px; height: 80px; padding: 0 28px; }
+#stage.portrait .highlight .label { font-size: 48px; }
+#stage.portrait .donate { top: 260px; right: 40px; }
+#stage.portrait .sponsor { top: 360px; right: 40px; }
+#stage.portrait .webcam { left: 30px; top: 150px; }
+#stage.portrait .notice { left: 30px; top: auto; bottom: 470px; width: 560px; }
+#stage.portrait .promo { left: 30px; bottom: 360px; }
+#stage.portrait .ticker { left: 30px; right: 160px; bottom: 296px; }
