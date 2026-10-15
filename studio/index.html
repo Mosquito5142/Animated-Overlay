@@ -12,7 +12,11 @@
       <h1>Animated-Overlay Studio</h1>
       <p class="muted">สร้างกรอบและโฆษณาเคลื่อนไหวพื้นหลังโปร่งใส แล้วเอาไปวางบน Track บนสุดของโปรแกรมตัดต่อ</p>
     </div>
+    <div class="row">
+      <button class="btn" data-open="output">📂 เปิดโฟลเดอร์ไฟล์ที่เรนเดอร์</button>
+    </div>
   </header>
+  <div id="health" hidden></div>
 
   <main>
     <section>
@@ -29,6 +33,21 @@
         <span class="muted">เลือกสไตล์ ตั้งชื่อ แล้วไปปรับแต่งให้เป็นแบบของคุณ</span>
       </div>
       <div id="templates" class="grid"></div>
+    </section>
+
+    <section>
+      <div class="sec-head">
+        <h2>คลังไฟล์ (รูป / ฟอนต์ / พื้นหลัง)</h2>
+        <span class="muted">ลากไฟล์มาวางตรงนี้ได้หลายไฟล์ รูป .jpg .webp .gif .bmp จะถูกแปลงเป็น .png ให้อัตโนมัติ</span>
+      </div>
+      <div id="dropzone" class="dropzone">
+        <div class="row">
+          <button class="btn primary" id="upload-btn">📁 อัปโหลดไฟล์</button>
+          <button class="btn" data-open="assets">📂 เปิดโฟลเดอร์</button>
+          <span id="upload-status" class="status"></span>
+        </div>
+        <div id="assets" class="asset-grid"></div>
+      </div>
     </section>
 
     <section class="help">

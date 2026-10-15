@@ -24,7 +24,7 @@
   border: 3px solid var(--primary);
   border-radius: 999px;
   box-shadow: 0 0 12px var(--primary), inset 0 0 10px color-mix(in srgb, var(--primary) 30%, transparent);
-  white-space: nowrap;
+  white-space: pre;
 }
 .label .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--secondary); box-shadow: 0 0 10px var(--secondary); }
 .label .text { font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: 1px; text-shadow: 0 0 10px var(--primary); }

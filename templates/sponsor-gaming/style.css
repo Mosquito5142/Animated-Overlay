@@ -14,7 +14,7 @@
 /* ---------- 1. HIGHLIGHT ---------- */
 .highlight {
   top: 30px; right: 40px;
-  height: 86px; padding: 0 34px;
+  min-height: 86px; padding: 6px 34px; box-sizing: border-box;
   display: flex; align-items: center;
   background: var(--primary);
   border-radius: 6px;
@@ -39,7 +39,7 @@
 /* ---------- 2. TOP DONATE ---------- */
 .donate {
   top: 568px; right: 26px;
-  width: 280px; height: 74px;
+  min-width: 280px; min-height: 74px;
   display: flex;
   background: var(--panel);
   border: 2px solid rgba(255, 255, 255, .12);
@@ -99,7 +99,7 @@
 /* ---------- 5. Promo bar ---------- */
 .promo {
   left: 15px; bottom: 12px;
-  height: 94px;
+  min-height: 94px;
   display: flex; align-items: center;
   background: linear-gradient(90deg, var(--panel) 0%, rgba(20, 20, 24, .92) 100%);
   border: 2px solid rgba(255, 255, 255, .1);
@@ -108,14 +108,14 @@
   overflow: hidden;
 }
 .promo .logo {
-  height: 100%; padding: 0 16px; display: flex; align-items: center;
+  align-self: stretch; padding: 0 16px; display: flex; align-items: center;
   background: rgba(255, 255, 255, .04);
 }
 .promo .logo img { max-height: 74px; max-width: 160px; object-fit: contain; }
-.promo .text { padding: 0 22px; font-size: 44px; font-weight: 700; white-space: nowrap; }
+.promo .text { padding: 6px 22px; font-size: 44px; font-weight: 700; line-height: 1.15; white-space: pre; }
 .promo .price-box {
   display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-  height: 100%; padding: 0 22px 0 18px;
+  align-self: stretch; padding: 6px 22px 6px 18px;
   background: rgba(0, 0, 0, .35);
 }
 .promo .old { font-size: 18px; color: #fff; background: #2563eb; padding: 0 8px; border-radius: 4px; line-height: 1.35; text-decoration: line-through; }
@@ -134,7 +134,7 @@
   overflow: hidden;
 }
 .ticker .tag {
-  flex: none; display: flex; align-items: center; padding: 0 16px;
+  flex: none; display: flex; align-items: center; padding: 0 16px; white-space: nowrap;
   background: var(--primary); font-size: 20px; font-weight: 800; font-style: italic;
 }
 .ticker .window { position: relative; flex: 1; overflow: hidden; }
@@ -160,7 +160,7 @@
 
 /* ================= แนวตั้ง 1080x1920 (Shorts / TikTok / Reels) =================
    เว้นขอบขวา ~150px ช่วงกลาง-ล่าง และขอบล่าง ~300px ไว้ให้ปุ่ม/คำบรรยายของแอป */
-#stage.portrait .highlight { top: 150px; right: 40px; height: 80px; padding: 0 28px; }
+#stage.portrait .highlight { top: 150px; right: 40px; min-height: 80px; padding: 6px 28px; }
 #stage.portrait .highlight .label { font-size: 48px; }
 #stage.portrait .donate { top: 260px; right: 40px; }
 #stage.portrait .sponsor { top: 360px; right: 40px; }

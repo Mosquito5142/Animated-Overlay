@@ -1,4 +1,6 @@
-// หน้าแรกของ Studio: รายการงาน + สร้างงานใหม่ + สั่งเรนเดอร์
+// หน้าแรกของ Studio: รายการงาน + สร้างงานใหม่ + สั่งเรนเดอร์ + คลังไฟล์ + สถานะเครื่อง
+
+import { uploadFile, pickFiles, kindOf, listAssets } from '/templates/_runtime/upload.js';
 
 const $ = (sel) => document.querySelector(sel);
 function el(tag, cls, parent, text) {
@@ -93,6 +95,17 @@ async function renderConfigs() {
     linkBtn(row, '▶ ดูตัวอย่าง', pageUrl(c.template, c.name));
     const renderBtn = el('button', 'btn', row, '🎬 เรนเดอร์');
     const dupBtn = el('button', 'btn', row, '⧉ ทำสำเนา');
+    const delBtn = el('button', 'btn danger', row, '🗑 ลบ');
+    delBtn.addEventListener('click', async () => {
+      if (!confirm(`ลบงาน "${c.name}" ?\n(ไฟล์จะถูกย้ายไปไว้ในโฟลเดอร์ .trash กู้คืนได้ ส่วนไฟล์ที่เรนเดอร์แล้วยังอยู่)`)) return;
+      try {
+        await api('/__api/delete', { name: c.name });
+        await renderConfigs();
+        await renderAssets();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
 
     const bar = el('div', 'bar', body);
     bar.hidden = true;
@@ -201,6 +214,113 @@ async function renderTemplates() {
   }
 }
 
+// ---------- คลังไฟล์ ----------
+const fmtSize = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+let fontCount = 0;
+
+async function renderAssets() {
+  const box = $('#assets');
+  const items = await listAssets();
+  box.replaceChildren();
+  if (!items.length) el('div', 'muted', box, 'ยังไม่มีไฟล์');
+  for (const a of items) {
+    const card = el('div', 'asset', box);
+    const pic = el('div', 'pic', card);
+    const src = `/${a.path.split('/').map(encodeURIComponent).join('/')}`;
+    if (a.type === 'image') el('img', '', pic).src = src;
+    else if (a.type === 'video') Object.assign(el('video', '', pic), { src, muted: true, loop: true, autoplay: true });
+    else {
+      // ตัวอย่างฟอนต์: โหลดฟอนต์จากไฟล์แล้วแสดงข้อความตัวอย่าง
+      const family = `AssetFont${fontCount++}`;
+      new FontFace(family, `url("${src}")`).load().then((f) => document.fonts.add(f)).catch(() => {});
+      const sample = el('span', 'font-sample', pic, 'กขค Aa 123');
+      sample.style.fontFamily = `"${family}", sans-serif`;
+    }
+    const info = el('div', 'info', card);
+    el('div', 'name', info, a.name);
+    el('div', 'muted', info, `${fmtSize(a.size)}${a.builtin ? ' · ตัวอย่างมากับโปรแกรม' : ''}`);
+    el('div', 'muted', info, a.usedBy.length ? `ใช้ใน: ${a.usedBy.join(', ')}` : 'ยังไม่มีงานไหนใช้');
+    if (!a.builtin) {
+      const del = el('button', 'btn danger', info, '🗑 ลบ');
+      del.disabled = a.usedBy.length > 0;
+      del.title = del.disabled ? 'ไฟล์นี้ยังถูกใช้อยู่ เอาออกจากงานก่อนถึงจะลบได้' : '';
+      del.addEventListener('click', async () => {
+        if (!confirm(`ลบ "${a.name}" ? (ย้ายไปไว้ในโฟลเดอร์ .trash)`)) return;
+        try {
+          await api('/__api/delete-asset', { path: a.path });
+          await renderAssets();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    }
+  }
+}
+
+async function uploadMany(files) {
+  const status = $('#upload-status');
+  let ok = 0;
+  const errors = [];
+  for (const [i, f] of files.entries()) {
+    status.className = 'status run';
+    status.textContent = `กำลังอัปโหลด ${i + 1}/${files.length}: ${f.name}`;
+    try {
+      await uploadFile(f, kindOf(f));
+      ok++;
+    } catch (err) {
+      errors.push(err.message);
+    }
+  }
+  status.className = errors.length ? 'status err' : 'status ok';
+  status.textContent = errors.length ? `อัปโหลดได้ ${ok} ไฟล์ · ✗ ${errors.join(' · ')}` : `✓ อัปโหลด ${ok} ไฟล์แล้ว`;
+  await renderAssets();
+}
+
+function setupLibrary() {
+  $('#upload-btn').addEventListener('click', async () => {
+    const files = await pickFiles('any', true);
+    if (files.length) uploadMany(files);
+  });
+  const zone = $('#dropzone');
+  zone.addEventListener('dragover', (e) => {
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.preventDefault();
+      zone.classList.add('drop');
+    }
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drop'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('drop');
+    uploadMany([...e.dataTransfer.files]);
+  });
+  for (const b of document.querySelectorAll('[data-open]')) {
+    b.addEventListener('click', () => api('/__api/open-folder', { which: b.dataset.open }).catch((err) => alert(err.message)));
+  }
+}
+
+// ---------- สถานะเครื่อง ----------
+async function renderHealth() {
+  const h = await api('/__api/health').catch(() => null);
+  const box = $('#health');
+  if (!h || (h.ffmpeg.ok && h.browser.ok)) {
+    box.hidden = true;
+    return;
+  }
+  box.replaceChildren();
+  el('b', '', box, '⚠ เครื่องยังไม่พร้อมเรนเดอร์ (ปรับแต่งและดูตัวอย่างได้ตามปกติ)');
+  const ul = el('ul', '', box);
+  if (!h.ffmpeg.ok) {
+    el('li', '', ul, h.ffmpeg.source
+      ? `FFmpeg ที่เจอไม่มี encoder ครบ (${Object.entries(h.ffmpeg.encoders).filter(([, v]) => !v).map(([k]) => k).join(', ')}) ลองรัน npm install ใหม่`
+      : 'ไม่พบ FFmpeg: ปิดโปรแกรมแล้วรัน npm install ใหม่ (หรือดับเบิลคลิก start.bat) ระบบจะดาวน์โหลดมาให้');
+  }
+  if (!h.browser.ok) {
+    el('li', '', ul, 'เปิดเบราว์เซอร์สำหรับเรนเดอร์ไม่ได้: ติดตั้ง Microsoft Edge หรือ Google Chrome หรือรัน npx playwright install chromium');
+  }
+  box.hidden = false;
+}
+
 async function resumeRunning() {
   const job = await api('/__api/running').catch(() => ({}));
   if (!job.id) return;
@@ -210,9 +330,12 @@ async function resumeRunning() {
 
 (async () => {
   try {
+    setupLibrary();
     await renderConfigs();
     await renderTemplates();
+    await renderAssets();
     await resumeRunning();
+    renderHealth();
   } catch (err) {
     el('div', 'empty', $('main'), `โหลดข้อมูลไม่ได้: ${err.message} (เปิดหน้านี้ผ่าน npm start หรือยัง?)`);
   }
