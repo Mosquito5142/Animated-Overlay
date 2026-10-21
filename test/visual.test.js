@@ -10,6 +10,8 @@ const browser = await launch();
 
 test('งานเดิมที่แปลงแล้วหน้าตาเหมือนเดิม', { skip: !browser && 'ยังไม่ได้ติดตั้ง Chromium' }, async (t) => {
   try {
+    const stageExists = await access(new URL('../templates/_runtime/stage.html', import.meta.url)).then(() => true, () => false);
+    assert.ok(stageExists, 'ไม่พบ templates/_runtime/stage.html');
     for (const c of CASES) {
       const cfg = migrate(await fixture(c.file));
       const ready = (await Promise.all(cfg.layers.map((l) => hasModule(l.type)))).every(Boolean);

@@ -20,8 +20,7 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
   font-family: var(--font, 'Kanit'), sans-serif;
   color: var(--text, #fff);
   -webkit-font-smoothing: antialiased;
-  /* ข้อความใน config ที่มี Enter (
-) จะขึ้นบรรทัดใหม่จริง */
+  /* ข้อความใน config ที่มี Enter (\n) จะขึ้นบรรทัดใหม่จริง */
   white-space: pre-line;
 }
 
