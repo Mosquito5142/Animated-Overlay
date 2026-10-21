@@ -20,7 +20,8 @@
     "composite": "node src/cli.js composite",
     "check": "node src/cli.js check",
     "templates": "node src/cli.js templates",
-    "new": "node src/cli.js new"
+    "new": "node src/cli.js new",
+    "test": "node --test \"test/*.test.js\""
   },
   "engines": {
     "node": ">=18"

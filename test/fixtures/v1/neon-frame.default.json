@@ -1,0 +1,55 @@
+{
+  "description": "กรอบไฟนีออนรอบจอ: แสงวิ่ง/กะพริบ/หายใจ/สายรุ้ง หลอดไฟรอบขอบ มุมกรอบ และป้ายข้อความ",
+  "template": "neon-frame",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "duration": 8,
+  "intro": false,
+  "format": [
+    "prores",
+    "webm"
+  ],
+  "theme": {
+    "primary": "#00e5ff",
+    "secondary": "#ff2bd6",
+    "panel": "#0b0b14",
+    "font": "Kanit"
+  },
+  "preview": {
+    "background": ""
+  },
+  "elements": {
+    "frame": {
+      "enabled": true,
+      "effect": "chase",
+      "thickness": 8,
+      "inset": 16,
+      "radius": 22,
+      "segments": 3,
+      "period": 2.5
+    },
+    "bulbs": {
+      "enabled": true,
+      "pattern": "alternate",
+      "spacing": 60,
+      "size": 7,
+      "gap": 26,
+      "period": 1
+    },
+    "corners": {
+      "enabled": true,
+      "length": 90,
+      "thickness": 12,
+      "period": 2
+    },
+    "label": {
+      "enabled": true,
+      "text": "LIVE NOW",
+      "sub": "ไลฟ์ทุกวัน 2 ทุ่ม",
+      "dot": true
+    }
+  }
+}
