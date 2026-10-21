@@ -48,7 +48,7 @@ async function openTemplate(cfg) {
   page.on('console', (m) => (m.type() === 'warning' || m.type() === 'error') && logs.push(m.text()));
   page.on('pageerror', (e) => logs.push(e.message));
 
-  await page.goto(`${url}/templates/${cfg.template}/index.html?mode=render`);
+  await page.goto(`${url}/templates/_runtime/stage.html?mode=render`);
   await page.waitForFunction(() => window.overlay && (window.overlay.ready || window.overlay.error), null, {
     timeout: 30000,
   });

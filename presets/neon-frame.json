@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "description": "กรอบไฟนีออนรอบจอ: แสงวิ่ง/กะพริบ/หายใจ/สายรุ้ง หลอดไฟรอบขอบ มุมกรอบ และป้ายข้อความ",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "duration": 8,
+  "format": [
+    "prores",
+    "webm"
+  ],
+  "theme": {
+    "primary": "#00e5ff",
+    "panel": "#0b0b14",
+    "font": "Kanit",
+    "accent": "#ff2bd6",
+    "text": "#ffffff"
+  },
+  "preview": {
+    "background": ""
+  },
+  "layers": [
+    {
+      "id": "neon-frame-1",
+      "type": "neon-frame",
+      "name": "กรอบนีออน",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "props": {
+        "effect": "chase",
+        "thickness": 8,
+        "inset": 16,
+        "radius": 22,
+        "segments": 3,
+        "period": 2.5
+      }
+    },
+    {
+      "id": "neon-bulbs-1",
+      "type": "neon-bulbs",
+      "name": "หลอดไฟรอบขอบ",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "props": {
+        "pattern": "alternate",
+        "spacing": 60,
+        "size": 7,
+        "gap": 26,
+        "period": 1
+      }
+    },
+    {
+      "id": "neon-corners-1",
+      "type": "neon-corners",
+      "name": "มุมกรอบ",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "props": {
+        "length": 90,
+        "thickness": 12,
+        "period": 2
+      }
+    },
+    {
+      "id": "neon-label-1",
+      "type": "neon-label",
+      "name": "ป้ายนีออน",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "props": {
+        "text": "LIVE NOW",
+        "sub": "ไลฟ์ทุกวัน 2 ทุ่ม",
+        "dot": true
+      }
+    }
+  ]
+}

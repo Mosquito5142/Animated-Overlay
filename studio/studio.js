@@ -20,17 +20,18 @@ async function api(url, body) {
   return data;
 }
 
-const TEMPLATE_NAMES = {
+const PRESET_NAMES = {
+  blank: 'หน้าเปล่า',
   'sponsor-gaming': 'ชุดโฆษณาคลิปเกม',
   'sponsor-popup': 'ป้ายสปอนเซอร์เด้งเข้ามุมจอ',
   'neon-frame': 'กรอบไฟนีออน',
 };
-const pageUrl = (template, c, mode) =>
-  `/templates/${template}/index.html?c=${encodeURIComponent(c)}${mode ? `&mode=${mode}` : ''}`;
+const pageUrl = (c, mode) =>
+  `/templates/_runtime/stage.html?c=${encodeURIComponent(c)}${mode ? `&mode=${mode}` : ''}`;
 const orientation = (res) => (res && res[1] > res[0] ? 'แนวตั้ง' : 'แนวนอน');
 
 /** ภาพตัวอย่างที่ขยับได้ (iframe ของหน้า preview แบบ embed) */
-function thumb(parent, template, c, res) {
+function thumb(parent, c, res) {
   const box = el('div', 'thumb', parent);
   const [W, H] = res || [1920, 1080];
   const h = 200;
@@ -38,7 +39,7 @@ function thumb(parent, template, c, res) {
   const frame = el('iframe', '', box);
   frame.loading = 'lazy';
   frame.title = c;
-  frame.src = `${pageUrl(template, c)}&embed=1`;
+  frame.src = `${pageUrl(c)}&embed=1`;
   const size = () => {
     const bw = box.clientWidth || 360;
     const fw = Math.min(bw, (W / H) * h);
@@ -71,7 +72,7 @@ async function renderConfigs() {
   const box = $('#configs');
   box.replaceChildren();
   if (!configs.length) {
-    el('div', 'empty', box, 'ยังไม่มีงาน เลือกเทมเพลตด้านล่างเพื่อเริ่มสร้าง');
+    el('div', 'empty', box, 'ยังไม่มีงาน เลือกหน้าเปล่าหรือเทมเพลตด้านล่างเพื่อเริ่มสร้าง');
     return;
   }
   for (const c of configs) {
@@ -82,17 +83,17 @@ async function renderConfigs() {
       el('div', 'status err', body, `ไฟล์ config มีปัญหา: ${c.error}`);
       continue;
     }
-    thumb(card, c.template, c.name, c.resolution);
+    thumb(card, c.name, c.resolution);
     const body = el('div', 'body', card);
     const title = el('div', 'title', body);
     el('b', '', title, c.name);
-    el('span', 'tag', title, TEMPLATE_NAMES[c.template] || c.template);
+    el('span', 'tag', title, `${c.layers} ชิ้น`);
     el('span', 'tag', title, `${orientation(c.resolution)} ${c.resolution.join('×')}`);
     el('span', 'tag', title, `${c.duration} วิ`);
 
     const row = el('div', 'row', body);
-    linkBtn(row, '✏️ ปรับแต่ง', pageUrl(c.template, c.name, 'edit'), 'primary');
-    linkBtn(row, '▶ ดูตัวอย่าง', pageUrl(c.template, c.name));
+    linkBtn(row, '✏️ ปรับแต่ง', pageUrl(c.name, 'edit'), 'primary');
+    linkBtn(row, '▶ ดูตัวอย่าง', pageUrl(c.name));
     const renderBtn = el('button', 'btn', row, '🎬 เรนเดอร์');
     const dupBtn = el('button', 'btn', row, '⧉ ทำสำเนา');
     const delBtn = el('button', 'btn danger', row, '🗑 ลบ');
@@ -171,23 +172,25 @@ async function runRender(name, ui, existing) {
 }
 
 async function renderTemplates() {
-  const templates = await api('/__api/templates');
+  const presets = await api('/__api/templates');
   const box = $('#templates');
   box.replaceChildren();
-  for (const t of templates) {
+  for (const t of presets) {
+    const blank = t.name === 'blank';
     const card = el('div', 'card', box);
-    thumb(card, t.name, `@${t.name}`, t.resolution);
+    if (blank) el('div', 'thumb blank', card, '⬜');
+    else thumb(card, `@${t.name}`, t.resolution);
     const body = el('div', 'body', card);
     const title = el('div', 'title', body);
-    el('b', '', title, TEMPLATE_NAMES[t.name] || t.name);
-    el('span', 'tag', title, t.name);
+    el('b', '', title, PRESET_NAMES[t.name] || t.name);
+    if (!blank) el('span', 'tag', title, `${t.layers} ชิ้น`);
     el('div', 'desc', body, t.description);
 
     const row1 = el('div', 'row', body);
     const name = el('input', '', row1);
     name.type = 'text';
     name.placeholder = 'ตั้งชื่องาน';
-    name.value = suggestName(t.name.split('-')[1] || t.name, new Set(configs.map((x) => x.name)));
+    name.value = suggestName(blank ? 'my' : t.name.split('-')[1] || t.name, new Set(configs.map((x) => x.name)));
     const orient = el('select', '', row1);
     for (const [v, label] of [['h', 'แนวนอน 1920×1080'], ['v', 'แนวตั้ง 1080×1920']]) {
       const o = el('option', '', orient, label);
@@ -196,15 +199,15 @@ async function renderTemplates() {
     orient.style.flex = '0 0 auto';
 
     const row2 = el('div', 'row', body);
-    const create = el('button', 'btn primary', row2, '＋ ใช้เทมเพลตนี้');
-    linkBtn(row2, 'ลองปรับดูก่อน', pageUrl(t.name, `@${t.name}`, 'edit'));
+    const create = el('button', 'btn primary', row2, blank ? '＋ สร้างหน้าเปล่า' : '＋ ใช้เทมเพลตนี้');
+    if (!blank) linkBtn(row2, 'ลองปรับดูก่อน', pageUrl(`@${t.name}`, 'edit'));
     const status = el('div', 'status', body);
 
     create.addEventListener('click', async () => {
       create.disabled = true;
       try {
-        const res = await api('/__api/new', { template: t.name, name: name.value.trim(), vertical: orient.value === 'v' });
-        location.href = pageUrl(t.name, res.name, 'edit');
+        const res = await api('/__api/new', { preset: t.name, name: name.value.trim(), vertical: orient.value === 'v' });
+        location.href = pageUrl(res.name, 'edit');
       } catch (err) {
         status.className = 'status err';
         status.textContent = `✗ ${err.message}`;

@@ -11,18 +11,6 @@ export const FORMATS = ['prores', 'webm', 'png'];
 
 const exists = (p) => access(p).then(() => true, () => false);
 
-const DEFAULTS = {
-  template: 'sponsor-gaming',
-  resolution: [1920, 1080],
-  fps: 30,
-  duration: 10,
-  intro: false,
-  format: ['prores', 'webm'],
-  theme: {},
-  preview: {},
-  elements: {},
-};
-
 const DEFAULTS_V2 = {
   resolution: [1920, 1080],
   fps: 30,
@@ -56,25 +44,6 @@ function basicErrors(cfg) {
 
 const fail = (file, errors) => new Error(`config ไม่ถูกต้อง (${file}):\n  - ${errors.join('\n  - ')}`);
 
-/** อ่าน config แล้วเติมค่าเริ่มต้น + ตรวจค่า ถ้าผิดจะ throw พร้อมข้อความภาษาไทย */
-export async function loadConfig(configPath, overrides = {}) {
-  const file = path.resolve(configPath);
-  const raw = await readJson(file);
-  const cfg = { ...DEFAULTS, ...raw, ...overrides };
-  if (typeof cfg.format === 'string') cfg.format = cfg.format.split(',').map((s) => s.trim());
-
-  const errors = basicErrors(cfg);
-  if (!/^[\w-]+$/.test(cfg.template)) errors.push(`template ไม่ถูกต้อง: "${cfg.template}"`);
-  const templateDir = path.join(ROOT, 'templates', cfg.template);
-  try {
-    await access(path.join(templateDir, 'index.html'));
-  } catch {
-    errors.push(`ไม่พบเทมเพลต: templates/${cfg.template}/index.html`);
-  }
-  if (errors.length) throw fail(file, errors);
-  return cfg;
-}
-
 /** เก็บสำเนาไฟล์เดิมก่อนเขียนทับ: backup/<ชื่อ>.v1.json (ชื่อซ้ำ → .v1-2.json, .v1-3.json ...) */
 async function backupOriginal(file, backupDir) {
   await mkdir(backupDir, { recursive: true });
@@ -89,7 +58,7 @@ async function backupOriginal(file, backupDir) {
  * ถ้าเป็นไฟล์แบบเดิม จะแปลงให้ เก็บสำเนาเดิมไว้ใน backup/ แล้วเขียนไฟล์ใหม่ทับ
  * (แปลงไม่ได้ → throw และไม่แตะไฟล์)
  */
-export async function loadProject(configPath, overrides = {}, { backupDir = path.join(ROOT, 'backup') } = {}) {
+export async function loadConfig(configPath, overrides = {}, { backupDir = path.join(ROOT, 'backup') } = {}) {
   const file = path.resolve(configPath);
   let raw = await readJson(file);
   if (raw.version !== 2) {

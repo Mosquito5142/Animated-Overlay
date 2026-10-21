@@ -1,0 +1,203 @@
+{
+  "version": 2,
+  "description": "ชุดโฆษณาคลิปเกมครบชุด: ป้าย HIGHLIGHT, โดเนท, โลโก้สปอนเซอร์, กรอบกล้อง, แถบโปรโมชัน, ตัววิ่ง",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "duration": 10,
+  "format": [
+    "prores",
+    "webm"
+  ],
+  "theme": {
+    "primary": "#e3122c",
+    "accent": "#ffd400",
+    "panel": "#141418",
+    "font": "Kanit",
+    "text": "#ffffff"
+  },
+  "preview": {
+    "background": ""
+  },
+  "layers": [
+    {
+      "id": "highlight-1",
+      "type": "highlight",
+      "name": "ป้าย HIGHLIGHT",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "top": 30,
+        "right": 40
+      },
+      "props": {
+        "text": "HIGHLIGHT"
+      }
+    },
+    {
+      "id": "top-donate-1",
+      "type": "top-donate",
+      "name": "TOP DONATE",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "top": 568,
+        "right": 26
+      },
+      "props": {
+        "name": "TNP",
+        "amount": 20000,
+        "currency": "฿"
+      }
+    },
+    {
+      "id": "sponsor-logo-1",
+      "type": "sponsor-logo",
+      "name": "โลโก้สปอนเซอร์",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "top": 668,
+        "right": 22
+      },
+      "props": {
+        "image": "assets/logos/sponsor-placeholder.svg"
+      }
+    },
+    {
+      "id": "webcam-frame-1",
+      "type": "webcam-frame",
+      "name": "กรอบกล้อง",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "left": 15,
+        "top": 624
+      },
+      "props": {
+        "channel": "BANK",
+        "label": "OVERTIME",
+        "live": true,
+        "camSize": [
+          398,
+          292
+        ]
+      }
+    },
+    {
+      "id": "promo-bar-1",
+      "type": "promo-bar",
+      "name": "แถบโปรโมชัน",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "left": 15,
+        "bottom": 12
+      },
+      "props": {
+        "logo": "assets/logos/game-placeholder.svg",
+        "text": "แพ็คใหญ่จุใจ",
+        "oldPrice": "29,999",
+        "price": "8,230",
+        "unit": "THB",
+        "note": "ระบบ Drop Link"
+      }
+    },
+    {
+      "id": "ticker-1",
+      "type": "ticker",
+      "name": "ข้อความวิ่ง",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "left": 720,
+        "right": 380,
+        "bottom": 26
+      },
+      "props": {
+        "tag": "PROMO",
+        "items": [
+          "เติมเกมราคาพิเศษ ผ่านระบบ Drop Link",
+          "กดติดตามช่องเพื่อไม่พลาดไฮไลต์",
+          "โดเนทขึ้นจอได้ทุกวัน"
+        ],
+        "speed": 110
+      }
+    },
+    {
+      "id": "notice-1",
+      "type": "notice",
+      "name": "กล่องประกาศ",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "left": 15,
+        "top": 534
+      },
+      "props": {
+        "secondsEach": 5,
+        "messages": [
+          {
+            "title": "📢 ประกาศ",
+            "text": "ไลฟ์ทุกวัน 2 ทุ่มเป็นต้นไป"
+          },
+          {
+            "title": "🎁 โปรโมชัน",
+            "text": "แพ็คใหญ่จุใจ ลดเหลือ 8,230 THB"
+          }
+        ]
+      }
+    }
+  ]
+}

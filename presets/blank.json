@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "description": "เริ่มจากจอว่าง แล้วกด ＋ เพิ่มชิ้น เลือกชิ้นส่วนจากคลังมาจัดวางเอง",
+  "resolution": [1920, 1080],
+  "fps": 30,
+  "duration": 10,
+  "format": ["prores", "webm"],
+  "theme": { "primary": "#e3122c", "accent": "#ffd400", "panel": "#141418", "text": "#ffffff", "font": "Kanit" },
+  "preview": { "background": "" },
+  "layers": []
+}

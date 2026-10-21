@@ -1,11 +1,12 @@
 // Studio: หน้าเว็บรวมงานทั้งหมด (npm start)
 // - งานแต่ละชิ้นคือไฟล์ <ชื่อ>.config.json ในโฟลเดอร์โปรเจกต์
-// - หน้าเว็บเลือกงานด้วย ?c=<ชื่อ> และดู config เริ่มต้นของเทมเพลตด้วย ?c=@<เทมเพลต>
+// - หน้าเว็บเลือกงานด้วย ?c=<ชื่อ> และดูตัวอย่างของ preset ด้วย ?c=@<preset>
 // - API สำหรับสร้าง/ทำสำเนางาน และสั่งเรนเดอร์พร้อมแสดงความคืบหน้า
 
 import { readFile, writeFile, readdir, access, mkdir, rename, stat, open as openFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { loadConfig, ROOT } from './config.js';
+import { validateProject } from './validate.js';
 import { startServer, readJson, sendJson, saveUpload } from './server.js';
 import { findFfmpeg } from './encode.js';
 import { openExternal } from './open.js';
@@ -96,34 +97,36 @@ async function moveToTrash(file) {
   return dest;
 }
 
-export async function listTemplates() {
-  const dirs = await readdir(path.join(ROOT, 'templates'), { withFileTypes: true });
+const PRESETS = path.join(ROOT, 'presets');
+
+/** รายชื่อ preset (หน้าเปล่า + เทมเพลต) หน้าเปล่ามาก่อนเสมอ */
+export async function listPresets() {
   const out = [];
-  for (const d of dirs) {
-    if (!d.isDirectory() || d.name.startsWith('_')) continue;
-    const cfg = await readFile(path.join(ROOT, 'templates', d.name, 'default.config.json'), 'utf8')
-      .then(JSON.parse, () => ({}));
-    out.push({ name: d.name, description: cfg.description || '', resolution: cfg.resolution });
+  for (const f of await readdir(PRESETS)) {
+    if (!f.endsWith('.json')) continue;
+    const cfg = JSON.parse(await readFile(path.join(PRESETS, f), 'utf8'));
+    out.push({ name: f.slice(0, -5), description: cfg.description || '', resolution: cfg.resolution, layers: cfg.layers.length });
   }
-  return out;
+  return out.sort((a, b) => (a.name === 'blank' ? -1 : b.name === 'blank' ? 1 : a.name.localeCompare(b.name)));
 }
 
-/** สร้างไฟล์งานใหม่จาก config เริ่มต้นของเทมเพลต หรือจากงานที่มีอยู่ (from) */
-export async function createConfig({ template, from, name, vertical }, configDir = ROOT) {
+/** สร้างไฟล์งานใหม่จาก preset (หน้าเปล่า/เทมเพลต) หรือทำสำเนาจากงานที่มีอยู่ (from) */
+export async function createConfig({ preset, from, name, vertical }, configDir = ROOT) {
   if (!NAME_RE.test(name || '')) throw new Error('ชื่องานใช้ได้แค่ ตัวอักษร ตัวเลข _ - (ไม่เกิน 60 ตัว)');
   const out = path.join(configDir, `${name}${SUFFIX}`);
   if (await exists(out)) throw new Error(`มีงานชื่อ "${name}" อยู่แล้ว`);
-  let src;
+  let data;
   if (from) {
     if (!NAME_RE.test(from)) throw new Error('ชื่องานต้นฉบับไม่ถูกต้อง');
-    src = path.join(configDir, `${from}${SUFFIX}`);
+    const src = path.join(configDir, `${from}${SUFFIX}`);
+    if (!(await exists(src))) throw new Error(`ไม่พบงาน "${from}"`);
+    data = await loadConfig(src);
   } else {
-    if (!/^[\w-]+$/.test(template || '')) throw new Error('เทมเพลตไม่ถูกต้อง');
-    src = path.join(ROOT, 'templates', template, 'default.config.json');
+    if (!/^[\w-]+$/.test(preset || '')) throw new Error('เทมเพลตไม่ถูกต้อง');
+    data = JSON.parse(await readFile(path.join(PRESETS, `${preset}.json`), 'utf8').catch(() => {
+      throw new Error(`ไม่พบเทมเพลต "${preset}"`);
+    }));
   }
-  const data = JSON.parse(await readFile(src, 'utf8').catch(() => {
-    throw new Error(from ? `ไม่พบงาน "${from}"` : `ไม่พบเทมเพลต "${template}"`);
-  }));
   delete data.description;
   delete data.name;
   if (vertical === true) data.resolution = [1080, 1920];
@@ -148,7 +151,7 @@ export async function startStudio({ port = 5173, extra = {}, loadRenderer }) {
     if (c.startsWith('@')) {
       const t = c.slice(1);
       if (!/^[\w-]+$/.test(t)) throw new Error('เทมเพลตไม่ถูกต้อง');
-      return { name: c, ...(await loadConfig(path.join(ROOT, 'templates', t, 'default.config.json'))) };
+      return { name: c, ...(await loadConfig(path.join(PRESETS, `${t}.json`))) };
     }
     return { name: c, ...(await loadConfig(fileOf(c))) };
   }
@@ -158,6 +161,8 @@ export async function startStudio({ port = 5173, extra = {}, loadRenderer }) {
     if (c.startsWith('@')) throw new Error('นี่คือตัวอย่างของเทมเพลต กด "ใช้เทมเพลตนี้" ที่หน้าแรกเพื่อสร้างงานของคุณก่อน');
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('config ต้องเป็นออบเจกต์');
     delete data.name;
+    const errors = validateProject(data, { strict: true });
+    if (errors.length) throw new Error(`บันทึกไม่ได้:\n  - ${errors.join('\n  - ')}`);
     const file = fileOf(c);
     const before = await readFile(file, 'utf8');
     await writeFile(file, JSON.stringify(data, null, 2) + '\n');
@@ -182,7 +187,7 @@ export async function startStudio({ port = 5173, extra = {}, loadRenderer }) {
         const cfg = await loadConfig(fileOf(name));
         list.push({
           name,
-          template: cfg.template,
+          layers: cfg.layers.length,
           resolution: cfg.resolution,
           duration: cfg.duration,
           format: cfg.format,
@@ -325,7 +330,7 @@ export async function startStudio({ port = 5173, extra = {}, loadRenderer }) {
     const route = `${req.method} ${url.pathname}`;
     try {
       if (route === 'GET /__api/configs') return sendJson(res, 200, await listConfigs()), true;
-      if (route === 'GET /__api/templates') return sendJson(res, 200, await listTemplates()), true;
+      if (route === 'GET /__api/templates') return sendJson(res, 200, await listPresets()), true;
       if (route === 'POST /__api/new') {
         const { name } = await createConfig(await readJson(req));
         console.log(`สร้างงาน ${name} แล้ว`);

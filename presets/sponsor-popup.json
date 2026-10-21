@@ -1,0 +1,148 @@
+{
+  "version": 2,
+  "description": "ป้ายสปอนเซอร์เด้งเข้ามุมจอทีละอัน เพิ่ม/ลบป้ายได้ ลากไปมุมไหนก็เด้งเข้าจากขอบนั้น",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "duration": 20,
+  "format": [
+    "prores",
+    "webm"
+  ],
+  "theme": {
+    "primary": "#ff3d57",
+    "accent": "#ffd400",
+    "panel": "#111827",
+    "font": "Kanit",
+    "text": "#ffffff"
+  },
+  "preview": {
+    "background": ""
+  },
+  "layers": [
+    {
+      "id": "popup-card-1",
+      "type": "popup-card",
+      "name": "YOUR BRAND",
+      "hidden": false,
+      "start": 1,
+      "end": 7.15,
+      "enter": {
+        "type": "pop",
+        "from": "auto",
+        "duration": 0.7
+      },
+      "exit": {
+        "type": "pop",
+        "duration": 0.45
+      },
+      "style": {
+        "top": 40,
+        "right": 40,
+        "left": "auto",
+        "bottom": "auto",
+        "transform-origin": "right top"
+      },
+      "props": {
+        "tag": "SPONSORED BY",
+        "image": "assets/logos/sponsor-placeholder.svg",
+        "title": "YOUR BRAND",
+        "subtitle": "ผู้สนับสนุนหลักของช่อง",
+        "color": "#ff3d57"
+      }
+    },
+    {
+      "id": "popup-card-2",
+      "type": "popup-card",
+      "name": "ลด 50% วันนี้เท่านั้น",
+      "hidden": false,
+      "start": 7.5,
+      "end": 13.65,
+      "enter": {
+        "type": "pop",
+        "from": "auto",
+        "duration": 0.7
+      },
+      "exit": {
+        "type": "pop",
+        "duration": 0.45
+      },
+      "style": {
+        "top": "auto",
+        "right": "auto",
+        "left": 40,
+        "bottom": 60,
+        "transform-origin": "left bottom"
+      },
+      "props": {
+        "tag": "โปรโมชัน",
+        "image": "",
+        "title": "ลด 50% วันนี้เท่านั้น",
+        "subtitle": "กดลิงก์ใต้คลิปได้เลย",
+        "color": "#22c55e"
+      }
+    },
+    {
+      "id": "popup-card-3",
+      "type": "popup-card",
+      "name": "กดติดตามช่อง",
+      "hidden": false,
+      "start": 14,
+      "end": 19.65,
+      "enter": {
+        "type": "pop",
+        "from": "top",
+        "duration": 0.7
+      },
+      "exit": {
+        "type": "pop",
+        "duration": 0.45
+      },
+      "style": {
+        "top": 40,
+        "right": "auto",
+        "left": 40,
+        "bottom": "auto",
+        "transform-origin": "left top"
+      },
+      "props": {
+        "tag": "อย่าลืม",
+        "image": "",
+        "title": "กดติดตามช่อง",
+        "subtitle": "@yourchannel",
+        "color": "#a855f7"
+      }
+    },
+    {
+      "id": "popup-card-4",
+      "type": "popup-card",
+      "name": "POWERED BY",
+      "hidden": false,
+      "start": 0,
+      "end": null,
+      "enter": {
+        "type": "none"
+      },
+      "exit": {
+        "type": "none"
+      },
+      "style": {
+        "top": "auto",
+        "right": 30,
+        "left": "auto",
+        "bottom": 30,
+        "transform-origin": "right bottom"
+      },
+      "props": {
+        "persistent": true,
+        "compact": true,
+        "tag": "POWERED BY",
+        "image": "assets/logos/sponsor-placeholder.svg",
+        "title": "",
+        "color": "#ff3d57"
+      }
+    }
+  ]
+}

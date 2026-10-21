@@ -131,7 +131,7 @@ export function startServer(getConfig, port = 0, { onSave, handle, home } = {}) 
       }
       if (url.pathname === '/') {
         const cfg = await getConfig(url);
-        res.writeHead(302, { location: `/templates/${cfg.template}/index.html${url.search}` });
+        res.writeHead(302, { location: `/templates/_runtime/stage.html${url.search}` });
         res.end();
         return;
       }

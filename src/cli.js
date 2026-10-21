@@ -3,7 +3,7 @@ import path from 'node:path';
 import { readFile, writeFile, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
-import { startStudio, listTemplates } from './studio.js';
+import { startStudio, listPresets } from './studio.js';
 import { openExternal } from './open.js';
 import { composite, findFfmpeg } from './encode.js';
 
@@ -17,8 +17,8 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
   render                  เรนเดอร์ไฟล์ overlay ตาม config
   render --still [วินาที]  เรนเดอร์ภาพนิ่ง PNG โปร่งใส (ค่าเริ่มต้นที่วินาทีที่ 1)
   composite --bg <ไฟล์>    ซ้อน overlay ลงบนคลิป/รูป เพื่อตรวจผล (ได้ไฟล์ .mp4)
-  templates               ดูรายชื่อเทมเพลตที่มี
-  new <เทมเพลต> <ไฟล์>     สร้าง config ใหม่จากเทมเพลต เช่น new neon-frame my.config.json
+  templates               ดูรายชื่อเทมเพลต (preset) ที่มี รวมหน้าเปล่า (blank)
+  new <เทมเพลต> <ไฟล์>     สร้าง config ใหม่ เช่น new blank my.config.json หรือ new neon-frame my.config.json
                           (ใส่ --vertical เพื่อทำขนาดแนวตั้ง 1080x1920)
   check                   ตรวจว่าเครื่องมี FFmpeg / Chromium พร้อมใช้
 
@@ -28,7 +28,6 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
   -f, --format <รายการ>   prores,webm,png (ทับค่าใน config)
   -d, --duration <วินาที>  ความยาว (ทับค่าใน config)
       --fps <ตัวเลข>       เฟรมต่อวินาที (ทับค่าใน config)
-      --intro             ใส่แอนิเมชันเข้าฉากตอนต้น (ไฟล์จะไม่วนลูปเนียน)
       --no-open           start: ไม่ต้องเปิดเบราว์เซอร์ให้อัตโนมัติ
       --overlay <ไฟล์>     ไฟล์ overlay ที่ใช้กับ composite (ค่าเริ่มต้น: output/<name>.mov)
   -p, --port <ตัวเลข>      พอร์ตของ Studio (ค่าเริ่มต้น: 5173)
@@ -44,7 +43,6 @@ function parse() {
       format: { type: 'string', short: 'f' },
       duration: { type: 'string', short: 'd' },
       fps: { type: 'string' },
-      intro: { type: 'boolean' },
       still: { type: 'boolean' },
       vertical: { type: 'boolean' },
       bg: { type: 'string' },
@@ -58,7 +56,6 @@ function parse() {
   if (values.format) overrides.format = values.format;
   if (values.duration) overrides.duration = Number(values.duration);
   if (values.fps) overrides.fps = Number(values.fps);
-  if (values.intro) overrides.intro = true;
   return { cmd: positionals[0], rest: positionals.slice(1), values, overrides };
 }
 
@@ -81,13 +78,13 @@ async function main() {
     return;
   }
   if (cmd === 'templates') {
-    for (const t of await listTemplates()) console.log(`  ${t.name.padEnd(18)} ${t.description}`);
+    for (const t of await listPresets()) console.log(`  ${t.name.padEnd(18)} ${t.description}`);
     return;
   }
   if (cmd === 'new') {
     const [template, target] = rest;
     if (!template || !target) throw new Error('ใช้แบบนี้: new <เทมเพลต> <ไฟล์.config.json> [--vertical]');
-    const src = path.join(ROOT, 'templates', template, 'default.config.json');
+    const src = path.join(ROOT, 'presets', `${template}.json`);
     const data = JSON.parse(await readFile(src, 'utf8').catch(() => {
       throw new Error(`ไม่พบเทมเพลต "${template}" (ดูรายชื่อด้วยคำสั่ง templates)`);
     }));
@@ -118,7 +115,7 @@ async function main() {
       const cfg = await load().catch(() => null);
       console.log(`\n  Animated-Overlay Studio: ${url}\n`);
       if (cfg && cmd !== 'start') {
-        const page = `${url}/templates/${cfg.template}/index.html?c=${encodeURIComponent(nameFromConfig)}`;
+        const page = `${url}/templates/_runtime/stage.html?c=${encodeURIComponent(nameFromConfig)}`;
         console.log(`  ${cmd === 'edit' ? 'หน้าปรับแต่ง' : 'หน้าดูตัวอย่าง'}: ${page}${cmd === 'edit' ? '&mode=edit' : ''}\n`);
       }
       console.log('  เปิดลิงก์ด้านบนในเบราว์เซอร์ | ปิดหน้าต่างนี้หรือกด Ctrl+C เพื่อปิดโปรแกรม');

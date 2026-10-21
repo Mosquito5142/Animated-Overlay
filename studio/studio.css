@@ -37,6 +37,7 @@ section { margin-top: 28px; }
   display: flex; align-items: center; justify-content: center;
 }
 .thumb iframe { border: 0; display: block; background: transparent; pointer-events: none; }
+.thumb.blank { font-size: 72px; color: rgba(255, 255, 255, .55); }
 .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .title b { font-size: 17px; word-break: break-all; }
