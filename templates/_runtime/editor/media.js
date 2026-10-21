@@ -5,6 +5,20 @@
 import { el } from '../dom.js';
 import { uploadFile, pickFiles, listAssets } from '../upload.js';
 
+// รายการไฟล์ในคลัง: เก็บไว้ชั่วครู่ แผงวาดใหม่บ่อยจะได้ไม่ยิงคำขอทุกครั้ง (อัปโหลดเสร็จจะล้างให้)
+let assetsCache = null;
+let assetsAt = 0;
+function assets(refresh = false) {
+  if (refresh || !assetsCache || Date.now() - assetsAt > 5000) {
+    assetsAt = Date.now();
+    assetsCache = listAssets().catch((err) => {
+      assetsCache = null;
+      throw err;
+    });
+  }
+  return assetsCache;
+}
+
 /**
  * kind = 'image' (รูปในชิ้นส่วน) หรือ 'background' (รูป/คลิปพื้นหลังตัวอย่าง)
  * apply(path) ถูกเรียกเมื่อเลือกไฟล์ใหม่ ('' = ไม่ใช้รูป) ผู้เรียกจัดการ snapshot / rebuild เอง
@@ -46,6 +60,7 @@ export function imageField(parent, label, kind, value, apply) {
     msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
     try {
       const res = await uploadFile(file, kind);
+      assets(true).catch(() => {});
       await choose(res.path);
       msg.textContent = res.converted ? `✓ แปลงเป็น ${res.name} แล้ว` : `✓ อัปโหลด ${res.name} แล้ว`;
     } catch (err) {
@@ -62,7 +77,7 @@ export function imageField(parent, label, kind, value, apply) {
       return;
     }
     lib.replaceChildren();
-    const items = (await listAssets()).filter((a) => a.type === 'image' || (kind === 'background' && a.type === 'video'));
+    const items = (await assets()).filter((a) => a.type === 'image' || (kind === 'background' && a.type === 'video'));
     if (!items.length) el('div', 'ed-hint', lib, 'ยังไม่มีรูปในคลัง กด 📁 อัปโหลด');
     for (const a of items) {
       const b = el('button', 'ed-lib-item', lib);
@@ -103,7 +118,13 @@ export function fontSelect(parent, label, current, defaultLabel, onChange) {
   upBtn.type = 'button';
   const msg = el('div', 'ed-msg', wrapEl);
   const fill = async (value) => {
-    const fonts = (await listAssets().catch(() => [])).filter((a) => a.type === 'font');
+    let fonts = [];
+    try {
+      fonts = (await assets()).filter((a) => a.type === 'font');
+    } catch {
+      msg.className = 'ed-msg bad';
+      msg.textContent = '✗ โหลดรายการฟอนต์ไม่ได้';
+    }
     sel.replaceChildren();
     el('option', '', sel, defaultLabel).value = '';
     for (const f of fonts) el('option', '', sel, f.name).value = f.path;
@@ -117,6 +138,7 @@ export function fontSelect(parent, label, current, defaultLabel, onChange) {
     msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
     try {
       const res = await uploadFile(file, 'font');
+      assets(true).catch(() => {});
       await onChange(res.path);
       await fill(res.path);
       msg.textContent = `✓ ใช้ฟอนต์ ${res.name} แล้ว`;

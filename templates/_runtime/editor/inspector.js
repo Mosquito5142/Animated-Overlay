@@ -211,6 +211,7 @@ function colorSection(box, store, layer) {
     const inp = el('input', '', row);
     Object.assign(inp, { type: 'color', value: own ?? theme[k] ?? '#ffffff' });
     inp.addEventListener('input', store.onEdit((n) => (layer.theme = { ...(layer.theme ?? {}), [k]: n.value })));
+    inp.addEventListener('change', () => store.refresh());
     if (own) {
       button(row, '↺ ใช้สีธีม', () =>
         store.act(() => {
