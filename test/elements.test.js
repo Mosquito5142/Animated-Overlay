@@ -2,7 +2,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { access } from 'node:fs/promises';
 import { CATALOG } from '../elements/catalog.js';
-import { launch, shoot } from './helpers/browser.js';
+import { launch, shoot, diffRatio } from './helpers/browser.js';
 
 const exists = (p) => access(new URL(p, import.meta.url)).then(() => true, () => false);
 const project = (layers) => ({
@@ -45,6 +45,49 @@ test('ชิ้นที่ไม่รู้จัก: ตอนเรนเด
     shoot(browser, project(layers), '/templates/_runtime/stage.html?mode=render', [0]),
     /x-1: ไม่รู้จักชิ้น "nope"/,
   );
+});
+
+const skip = !browser && 'ยังไม่ได้ติดตั้ง Chromium';
+const RENDER = '/templates/_runtime/stage.html?mode=render';
+const base = (id, type, extra = {}) => ({ id, type, start: 0, end: null, enter: { type: 'none' }, exit: { type: 'none' }, props: {}, ...extra });
+
+test('รูปที่ยังไม่ได้เลือก: ตอนเรนเดอร์ไม่มีกรอบ "ยังไม่ได้เลือกรูป" ติดไป', { skip }, async () => {
+  const { shots: [empty] } = await shoot(browser, project([]), RENDER, [0]);
+  const { shots: [img], logs } = await shoot(browser, project([base('image-1', 'image', { style: { left: 100, top: 100 } })]), RENDER, [0]);
+  assert.deepEqual(logs, []);
+  assert.equal(await diffRatio(browser, empty, img), 0);
+});
+
+test('ตัววิ่งที่ไม่มีข้อความ (items: []): ไม่ clone ไม่มี NaN', { skip }, async () => {
+  const layers = [base('ticker-1', 'ticker', { style: { left: 30, right: 30, bottom: 30 }, props: { items: [] } })];
+  const { logs, values } = await shoot(browser, project(layers), RENDER, [0, 3], (page) =>
+    page.evaluate(() => ({ units: document.querySelectorAll('.el-ticker .unit').length, transform: document.querySelector('.el-ticker .track').style.transform })));
+  assert.deepEqual(logs, []);
+  for (const v of values) {
+    assert.equal(v.units, 1);
+    assert.doesNotMatch(v.transform, /NaN|Infinity/);
+  }
+});
+
+test('ท่าเข้าที่ค่าผิด: หน้าดูตัวอย่างแสดงกล่อง ⚠ แค่ชิ้นนั้น ส่วนเรนเดอร์ล้ม', { skip }, async () => {
+  const layers = [
+    base('bad-1', 'text', { style: { left: 100, top: 100 }, enter: { type: 'slide', offset: 5, duration: 1 }, props: { text: 'BAD' } }),
+    base('ok-1', 'text', { style: { left: 100, top: 300 }, props: { text: 'OK' } }),
+  ];
+  const { values } = await shoot(browser, project(layers), '/templates/_runtime/stage.html?embed=1', [0.2], (page) =>
+    page.evaluate(() => [...document.querySelectorAll('.layer')].map((n) => [n.dataset.id, n.querySelector('.el').className])));
+  assert.deepEqual(values[0], [['bad-1', 'el el-broken'], ['ok-1', 'el el-text']]);
+  await assert.rejects(shoot(browser, project(layers), RENDER, [0.2]), /bad-1/);
+});
+
+test('ชิ้นที่ย่อเหลือครึ่ง: ท่า slide ออกพาชิ้นพ้นขอบจอจริง', { skip }, async () => {
+  const layers = [base('text-1', 'text', {
+    end: 5, exit: { type: 'slide', from: 'right', duration: 1 },
+    style: { left: 1400, top: 400, scale: '0.5' }, props: { text: 'SCALED' },
+  })];
+  const { values } = await shoot(browser, project(layers), RENDER, [4.999], (page) =>
+    page.evaluate(() => document.querySelector('.layer .el').getBoundingClientRect().left));
+  assert.ok(values[0] > 1920, `ขอบซ้ายของชิ้นอยู่ที่ ${values[0]}`);
 });
 
 after(() => browser?.close());

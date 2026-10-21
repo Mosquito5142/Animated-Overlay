@@ -8,7 +8,7 @@
 // เพื่อให้เรนเดอร์ได้ผลเหมือนเดิมทุกครั้ง และวนลูปได้ไม่มีรอยต่อ
 
 import { el, applyStyle } from './dom.js';
-import { makeCycle, layerSpan, layerMotion } from './timing.js';
+import { makeCycle, layerSpan, layerMotion, scaledBox } from './timing.js';
 import { CATALOG } from '../../elements/catalog.js';
 
 const params = new URLSearchParams(location.search);
@@ -105,6 +105,20 @@ function waitForImages(root) {
   );
 }
 
+/**
+ * กล่องบนจอของ layer (พิกเซลของ stage ไม่ขึ้นกับการย่อหน้าจอของ preview/edit)
+ * รวมการย่อ/ขยายจาก CSS scale (แถบ "ขนาด" ในหน้าแก้ไข) รอบ transform-origin ด้วย
+ */
+function layerBox(wrap) {
+  const box = { x: wrap.offsetLeft, y: wrap.offsetTop, w: wrap.offsetWidth, h: wrap.offsetHeight };
+  const cs = getComputedStyle(wrap);
+  if (!cs.scale || cs.scale === 'none') return { box, scale: 1 };
+  const [sx = 1, sy = sx] = cs.scale.split(/\s+/).map(Number);
+  if (sx === 1 && sy === 1) return { box, scale: 1 };
+  const [ox = box.w / 2, oy = box.h / 2] = cs.transformOrigin.split(/\s+/).map(parseFloat);
+  return { box: scaledBox(box, [sx, sy], [ox, oy]), scale: [sx, sy] };
+}
+
 export async function run() {
   const res = await fetch(configUrl(), { cache: 'no-store' });
   const config = await res.json();
@@ -122,7 +136,14 @@ export async function run() {
   let items = [];
 
   // สร้างทุก layer จาก config (หน้าแก้ไขเรียกซ้ำได้ทุกครั้งที่ config เปลี่ยน)
-  const mount = async (cfg) => {
+  // เรียกซ้อนกันได้: ต่อคิวให้ทำทีละรอบ ไม่ให้สองรอบเติม layer ลง stage/items พร้อมกันจนชิ้นซ้ำ
+  let queue = Promise.resolve();
+  const mount = (cfg) => {
+    const job = queue.catch(() => {}).then(() => mountNow(cfg));
+    queue = job;
+    return job;
+  };
+  const mountNow = async (cfg) => {
     ctx.config = cfg;
     // หน้าแก้ไขเปิดค่านี้ไว้ เพื่อให้ชิ้นที่โผล่เป็นช่วงๆ แสดงค้างให้ลากได้
     ctx.showAll ??= mode === 'edit';
@@ -190,24 +211,29 @@ export async function run() {
 
   const renderFrame = (t) => {
     // อ่านตำแหน่งทั้งหมดก่อน แล้วค่อยเขียน (ไม่ให้เบราว์เซอร์คำนวณ layout ซ้ำ)
-    const boxes = items.map(({ wrap }) => ({ x: wrap.offsetLeft, y: wrap.offsetTop, w: wrap.offsetWidth, h: wrap.offsetHeight }));
+    const boxes = items.map(({ wrap }) => layerBox(wrap));
     items.forEach((item, i) => {
-      const span = layerSpan(item.layer, t, ctx.duration);
-      span.showAll = !!ctx.showAll;
-      const visible = span.showAll || span.visible;
-      item.wrap.style.visibility = visible ? '' : 'hidden';
-      if (!visible) return;
-      const m = span.showAll ? null : layerMotion(item.layer, span, boxes[i], W, H);
-      const moved = m && (m.x || m.y || m.scale !== 1);
-      item.motion.style.transform = moved ? `translate(${m.x}px, ${m.y}px) scale(${m.scale})` : '';
-      item.motion.style.opacity = m && m.opacity !== 1 ? String(m.opacity) : '';
-      if (item.broken || !item.mod.frame) return;
+      // ชิ้นที่ค่าผิด (ท่าเข้า/ออก หรือตัวชิ้นเอง) กลายเป็นกล่องเตือน ชิ้นอื่นยังทำงานต่อ
       try {
+        const span = layerSpan(item.layer, t, ctx.duration);
+        span.showAll = !!ctx.showAll;
+        const visible = span.showAll || span.visible;
+        item.wrap.style.visibility = visible ? '' : 'hidden';
+        if (!visible) return;
+        const m = span.showAll ? null : layerMotion(item.layer, span, boxes[i].box, W, H, boxes[i].scale);
+        const moved = m && (m.x || m.y || m.scale !== 1);
+        item.motion.style.transform = moved ? `translate(${m.x}px, ${m.y}px) scale(${m.scale})` : '';
+        item.motion.style.opacity = m && m.opacity !== 1 ? String(m.opacity) : '';
+        if (item.broken || !item.mod?.frame) return;
         item.mod.frame(item.state, t, span, ctx);
       } catch (err) {
+        if (mode === 'render') throw new Error(`${item.layer.id}: ${err.message}`);
+        item.wrap.style.visibility = '';
+        item.motion.style.transform = '';
+        item.motion.style.opacity = '';
+        if (item.broken) return;
         console.error(err);
-        markBroken(item, `${item.def.label}: ${err.message}`);
-        if (mode === 'render') throw err;
+        markBroken(item, `${item.def?.label ?? item.layer.type}: ${err.message}`);
       }
     });
   };

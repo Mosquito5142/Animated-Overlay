@@ -64,23 +64,44 @@ export function nearestEdge(box, W, H) {
   return Object.keys(d).reduce((a, k) => (d[k] < d[a] ? k : a));
 }
 
-/** ระยะเลื่อนที่พากล่องออกไปพ้นขอบจอด้าน from */
+/** ระยะเลื่อนที่พากล่องออกไปพ้นขอบจอด้าน from (ทิศที่ไม่รู้จัก → ขอบที่ใกล้ที่สุด) */
 export function offscreen(from, box, W, H) {
-  return {
+  const table = {
     left: [-(box.x + box.w + 40), 0],
     right: [W - box.x + 40, 0],
     top: [0, -(box.y + box.h + 40)],
     bottom: [0, H - box.y + 40],
-  }[from];
+  };
+  return table[from] ?? table[nearestEdge(box, W, H)];
+}
+
+const pair = (s) => (Array.isArray(s) ? s : [s, s]);
+
+/**
+ * กล่องบนจอของชิ้นที่ถูกย่อ/ขยาย (CSS scale บน .layer)
+ * box = กล่องก่อนย่อ/ขยาย, scale = ตัวเลข หรือ [sx, sy], origin = [ox, oy] จุดหมุน (px จากมุมซ้ายบนของกล่อง)
+ */
+export function scaledBox(box, scale, origin) {
+  const [sx, sy] = pair(scale);
+  const [ox, oy] = origin;
+  return { x: box.x + ox * (1 - sx), y: box.y + oy * (1 - sy), w: box.w * sx, h: box.h * sy };
 }
 
 const IDENTITY = { x: 0, y: 0, scale: 1, opacity: 1 };
 
 /**
  * ท่าเข้า/ออกของ layer ที่เวลา span.local
- * box = ตำแหน่งของ layer บนจอ ใช้หาทิศ "auto" และระยะเลื่อนออกนอกจอ
+ * box = ตำแหน่งของ layer บนจอ (หลังย่อ/ขยายแล้ว) ใช้หาทิศ "auto" และระยะเลื่อนออกนอกจอ
+ * scale = การย่อ/ขยายของ .layer (ตัวเลข หรือ [sx, sy]) ระยะเลื่อนใส่ที่ .motion ข้างใน จึงโดนคูณ scale
+ *   ต้องหารออกก่อน เพื่อให้เลื่อนบนจอได้ระยะจริง
  */
-export function layerMotion(layer, span, box, W, H) {
+export function layerMotion(layer, span, box, W, H, scale = 1) {
+  const [sx, sy] = pair(scale);
+  const m = motionAt(layer, span, box, W, H);
+  return sx === 1 && sy === 1 ? m : { ...m, x: m.x / sx, y: m.y / sy };
+}
+
+function motionAt(layer, span, box, W, H) {
   const dirOf = (m) => {
     const f = m.from ?? layer.enter?.from;
     return f && f !== 'auto' ? f : nearestEdge(box, W, H);

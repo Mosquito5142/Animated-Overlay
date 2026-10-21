@@ -37,3 +37,18 @@ test('ชนิดที่ไม่รู้จัก: โหลดได้ (�
   assert.equal(errs((c) => (c.layers[0].type = 'nope')), '');
   assert.match(errs((c) => (c.layers[0].type = 'nope'), { strict: true }), /ไม่รู้จักชิ้น "nope"/);
 });
+
+test('ค่าท่าเข้า/ออกที่ทำให้ stage พัง ถูกปฏิเสธ', () => {
+  assert.match(errs((c) => (c.layers[0].enter = { type: 'pop', from: 'diagonal' })), /ทิศ "diagonal"/);
+  assert.match(errs((c) => (c.layers[0].exit = { type: 'slide', from: 5 })), /ทิศ "5"/);
+  assert.match(errs((c) => (c.layers[0].enter = { type: 'slide', offset: [1] })), /offset ต้องเป็น \[x, y\]/);
+  assert.match(errs((c) => (c.layers[0].enter = { type: 'slide', offset: ['a', 0] })), /offset ต้องเป็น \[x, y\]/);
+  assert.match(errs((c) => (c.layers[0].exit = { type: 'slide', offset: 3 })), /offset ต้องเป็น \[x, y\]/);
+  assert.match(errs((c) => (c.layers[0].enter = { type: 'fade', duration: 0 })), /duration ต้องเป็นตัวเลขมากกว่า 0/);
+  assert.match(errs((c) => (c.layers[0].exit = { type: 'fade', duration: '1' })), /duration ต้องเป็นตัวเลขมากกว่า 0/);
+  assert.match(errs((c) => (c.layers[0].enter = 'pop')), /ท่าเข้า/);
+  // ค่าที่ถูกต้อง
+  assert.equal(errs((c) => (c.layers[0].enter = { type: 'pop', from: 'auto', duration: 0.7 })), '');
+  assert.equal(errs((c) => (c.layers[0].enter = { type: 'slide', offset: [420, 0], duration: 0.7 })), '');
+  assert.equal(errs((c) => (c.layers[0].exit = { type: 'slide', from: 'left' })), '');
+});

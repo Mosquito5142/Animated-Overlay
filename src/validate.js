@@ -2,7 +2,25 @@
 // strict: ต้องรู้จักทุกชนิดใน catalog (ใช้ตอนบันทึก ส่วนตอนโหลดยอมให้ผ่าน เพื่อเปิดไปลบชิ้นนั้นได้)
 
 import { CATALOG } from '../elements/catalog.js';
-import { ENTER_TYPES, EXIT_TYPES } from '../templates/_runtime/timing.js';
+import { ENTER_TYPES, EXIT_TYPES, DIRECTIONS } from '../templates/_runtime/timing.js';
+
+/** ตรวจท่าเข้า/ออก 1 ท่า (ค่าที่ผิดทำให้ stage คำนวณตำแหน่งไม่ได้) */
+function motionErrors(m, label, types) {
+  if (m == null) return [];
+  if (typeof m !== 'object' || Array.isArray(m)) return [`${label} ต้องเป็นออบเจกต์ เช่น { "type": "fade" }`];
+  const errors = [];
+  if (!types.includes(m.type)) errors.push(`ไม่รู้จัก${label} "${m.type}"`);
+  if (m.from !== undefined && !DIRECTIONS.includes(m.from)) {
+    errors.push(`${label}: ไม่รู้จักทิศ "${m.from}" (ใช้ได้: ${DIRECTIONS.join(', ')})`);
+  }
+  if (m.offset !== undefined && !(Array.isArray(m.offset) && m.offset.length === 2 && m.offset.every(Number.isFinite))) {
+    errors.push(`${label}: offset ต้องเป็น [x, y] ที่เป็นตัวเลข`);
+  }
+  if (m.duration !== undefined && !(typeof m.duration === 'number' && m.duration > 0)) {
+    errors.push(`${label}: duration ต้องเป็นตัวเลขมากกว่า 0`);
+  }
+  return errors;
+}
 
 export function validateProject(cfg, { strict = false } = {}) {
   const errors = [];
@@ -30,8 +48,8 @@ export function validateProject(cfg, { strict = false } = {}) {
       errors.push(`${where}: start ต้องอยู่ระหว่าง 0 ถึงความยาวคลิป`);
     }
     if (!(l.end == null || (typeof l.end === 'number' && l.end > l.start))) errors.push(`${where}: end ต้องว่างหรือมากกว่า start`);
-    if (l.enter && !ENTER_TYPES.includes(l.enter.type)) errors.push(`${where}: ไม่รู้จักท่าเข้า "${l.enter.type}"`);
-    if (l.exit && !EXIT_TYPES.includes(l.exit.type)) errors.push(`${where}: ไม่รู้จักท่าออก "${l.exit.type}"`);
+    motionErrors(l.enter, 'ท่าเข้า', ENTER_TYPES).forEach((e) => errors.push(`${where}: ${e}`));
+    motionErrors(l.exit, 'ท่าออก', EXIT_TYPES).forEach((e) => errors.push(`${where}: ${e}`));
     if (l.props !== undefined && (typeof l.props !== 'object' || l.props === null || Array.isArray(l.props))) {
       errors.push(`${where}: props ต้องเป็นออบเจกต์`);
     }
