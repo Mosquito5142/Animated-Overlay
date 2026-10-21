@@ -2772,7 +2772,7 @@ test('duplicateLayer: id ใหม่ ชื่อเติม (สำเนา)
   assert.equal(copy.name, 'การ์ดสปอนเซอร์เด้ง (สำเนา)');
   assert.deepEqual(copy.style, { right: 80, top: 80, left: 'auto' });
   assert.equal(copy.start, 6.5);
-  assert.equal(copy.end, 12.6);
+  assert.equal(copy.end, 12.65);
 });
 
 test('duplicateLayer: ชิ้นที่แสดงตลอดคลิปไม่ต้องเลื่อนเวลา', () => {
@@ -2814,6 +2814,7 @@ Expected: FAIL จาก `Cannot find module '.../editor/commands.js'`
 import { CATALOG } from '../../../elements/catalog.js';
 
 const round1 = (x) => Math.round(x * 10) / 10;
+const round3 = (x) => Math.round(x * 1000) / 1000;
 const indexOf = (cfg, id) => cfg.layers.findIndex((l) => l.id === id);
 const find = (cfg, id) => cfg.layers.find((l) => l.id === id);
 
@@ -2857,7 +2858,7 @@ export function duplicateLayer(cfg, id, duration) {
   if (src.end != null) {
     const length = src.end - src.start;
     copy.start = round1((src.end + 0.3) % duration);
-    copy.end = round1(copy.start + length);
+    copy.end = round3(copy.start + length); // สำเนายาวเท่าชิ้นเดิมพอดี (round3 แค่ตัดเศษทศนิยมคลาดเคลื่อน)
   }
   cfg.layers.splice(i + 1, 0, copy);
   return copy.id;
