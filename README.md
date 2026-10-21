@@ -220,9 +220,7 @@ npm run new -- neon-frame my.config.json --vertical
 
 - เปลี่ยนสีทั้งชุดได้ที่ `theme.primary` / `theme.accent` / `theme.panel`
 - อัปโหลดโลโก้ได้จากหน้าปรับแต่ง (เก็บไว้ที่ `assets/uploads/`) หรือจะวางไฟล์ไว้ใน `assets/` แล้วแก้ path ใน config เองก็ได้
-- ข้อความใส่ `
-` เพื่อขึ้นบรรทัดใหม่ เช่น `"text": "บรรทัดแรก
-บรรทัดสอง"`
+- ข้อความใส่ `\n` เพื่อขึ้นบรรทัดใหม่ เช่น `"text": "บรรทัดแรก\nบรรทัดสอง"`
 - ฟอนต์: ตั้ง `theme.fontFile` เป็น path ไฟล์ฟอนต์ เช่น `"assets/fonts/uploads/MyFont.ttf"`
 
 > โลโก้ใน `assets/logos/` เป็นแค่ตัวอย่าง ให้เปลี่ยนเป็นโลโก้จริงที่ได้รับอนุญาตให้ใช้
