@@ -147,7 +147,14 @@ function timeSection(box, store, layer) {
   startIn.addEventListener('input', store.onEdit((n) => {
     const v = Number(n.value);
     if (n.value === '' || !(v >= 0 && v < D)) return false;
+    const prevStart = layer.start ?? 0;
     layer.start = v;
+    // เริ่มเลยเวลาจบ: เลื่อนเวลาจบตามไป โดยคงความยาวเดิม (ไม่มีความยาวเดิม → 1 วินาที) ไม่ให้บันทึกไม่ผ่าน
+    if (layer.end != null && layer.end <= v) {
+      const length = layer.end - prevStart;
+      layer.end = Math.round((v + (length > 0 ? length : 1)) * 1000) / 1000;
+      endIn.value = String(layer.end);
+    }
   }));
   const endIn = numberBox(row, layer.end ?? D, { min: 0 });
   endIn.classList.add('ed-small');
@@ -179,7 +186,9 @@ function motionSection(box, store, layer, key, label, types) {
   const row = field(box, label);
   const typeSel = selectBox(row, types, types.includes(m.type) ? m.type : 'none', MOTION_LABELS);
   const onType = store.onEdit((n) => {
-    layer[key] = n.value === 'none' ? { type: 'none' } : { ...(layer[key] ?? {}), type: n.value, duration: layer[key]?.duration ?? 0.6 };
+    // offset เป็นของท่า slide เดิม (intro) เปลี่ยนท่าแล้วทิ้งไป เพื่อให้เลือกทิศได้
+    const { offset, ...prev } = layer[key] ?? {};
+    layer[key] = n.value === 'none' ? { type: 'none' } : { ...prev, type: n.value, duration: prev.duration ?? 0.6 };
   });
   typeSel.addEventListener('change', (e) => {
     onType(e);
