@@ -1,0 +1,11 @@
+.el-sponsor-logo {
+  will-change: transform, opacity;
+  width: 300px; height: 90px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: var(--panel);
+  border: 3px solid var(--primary);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.el-sponsor-logo img { max-width: 260px; max-height: 66px; object-fit: contain; }
+.el-sponsor-logo .text { font-size: 40px; font-weight: 900; font-style: italic; letter-spacing: 1px; }

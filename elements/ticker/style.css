@@ -1,0 +1,16 @@
+.el-ticker {
+  will-change: transform, opacity;
+  height: 46px;
+  display: flex;
+  background: rgba(20, 20, 24, .88);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.el-ticker .tag {
+  flex: none; display: flex; align-items: center; padding: 0 16px; white-space: nowrap;
+  background: var(--primary); font-size: 20px; font-weight: 800; font-style: italic;
+}
+.el-ticker .window { position: relative; flex: 1; overflow: hidden; }
+.el-ticker .track { position: absolute; top: 0; bottom: 0; left: 0; display: flex; align-items: center; white-space: nowrap; }
+.el-ticker .item { font-size: 22px; font-weight: 600; padding-right: 60px; }
+.el-ticker .item::after { content: '◆'; color: var(--accent); margin-left: 60px; font-size: 14px; vertical-align: middle; }

@@ -1,0 +1,21 @@
+.el-webcam-frame { will-change: transform, opacity; }
+.el-webcam-frame .bar {
+  display: flex; align-items: stretch; height: 38px;
+  border-radius: 6px 6px 0 0; overflow: hidden;
+  font-weight: 700;
+}
+.el-webcam-frame .channel {
+  display: flex; align-items: center; padding: 0 16px;
+  background: var(--primary); font-size: 20px; font-style: italic; font-weight: 800;
+}
+.el-webcam-frame .label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--panel); font-size: 20px; font-style: italic; font-weight: 800; letter-spacing: 1px;
+}
+.el-webcam-frame .live {
+  display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  background: var(--panel-2); font-size: 15px;
+}
+.el-webcam-frame .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 8px var(--primary); }
+.el-webcam-frame .cam { position: relative; }
+.el-webcam-frame .cam svg { position: absolute; inset: 0; overflow: visible; }

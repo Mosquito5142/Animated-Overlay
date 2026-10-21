@@ -1,0 +1,33 @@
+.el-promo-bar {
+  will-change: transform, opacity;
+  min-height: 94px;
+  display: flex; align-items: center;
+  background: linear-gradient(90deg, var(--panel) 0%, rgba(20, 20, 24, .92) 100%);
+  border: 2px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.el-promo-bar .logo {
+  align-self: stretch; padding: 0 16px; display: flex; align-items: center;
+  background: rgba(255, 255, 255, .04);
+}
+.el-promo-bar .logo img { max-height: 74px; max-width: 160px; object-fit: contain; }
+.el-promo-bar .text { padding: 6px 22px; font-size: 44px; font-weight: 700; line-height: 1.15; white-space: pre; }
+.el-promo-bar .price-box {
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  align-self: stretch; padding: 6px 22px 6px 18px;
+  background: rgba(0, 0, 0, .35);
+}
+.el-promo-bar .old { font-size: 18px; color: #fff; background: #2563eb; padding: 0 8px; border-radius: 4px; line-height: 1.35; text-decoration: line-through; }
+.el-promo-bar .price-row { display: flex; align-items: baseline; gap: 6px; transform-origin: left center; }
+.el-promo-bar .price { font-size: 46px; font-weight: 700; line-height: 1; }
+.el-promo-bar .unit { font-size: 18px; font-weight: 600; color: var(--accent); }
+.el-promo-bar .note { font-size: 15px; opacity: .85; line-height: 1.2; }
+.el-promo-bar .shine {
+  position: absolute; top: -20%; bottom: -20%; left: 0;
+  width: 90px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+  transform: translateX(-200px) skewX(-20deg);
+  pointer-events: none;
+}

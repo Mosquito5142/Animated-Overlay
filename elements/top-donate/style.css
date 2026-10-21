@@ -1,0 +1,28 @@
+.el-top-donate {
+  will-change: transform, opacity;
+  min-width: 280px; min-height: 74px;
+  display: flex;
+  background: var(--panel);
+  border: 2px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+  overflow: hidden;
+}
+.el-top-donate .badge {
+  width: 86px; flex: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--primary);
+  font-weight: 800; font-style: italic; line-height: .95; text-align: center;
+  font-size: 17px;
+}
+.el-top-donate .crown { font-size: 22px; line-height: 1; color: var(--accent); margin-bottom: 2px; }
+.el-top-donate .body { flex: 1; padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; }
+.el-top-donate .name { font-size: 26px; font-weight: 700; line-height: 1.05; }
+.el-top-donate .amount { font-size: 26px; font-weight: 700; line-height: 1.05; color: var(--accent); font-variant-numeric: tabular-nums; }
+.el-top-donate .shine {
+  position: absolute; top: -20%; bottom: -20%; left: 0;
+  width: 90px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .75), transparent);
+  transform: translateX(-200px) skewX(-20deg);
+  pointer-events: none;
+}

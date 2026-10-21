@@ -8,14 +8,33 @@
 html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
 
 #stage {
+  /* ค่าธีมเริ่มต้น (config.theme ทับได้ และ layer.theme ทับเฉพาะชิ้น) */
+  --primary: #e3122c;
+  --accent: #ffd400;
+  --panel: #141418;
+  --panel-2: #23232a;
+  --text: #ffffff;
   position: absolute;
   inset: 0 auto auto 0;
   overflow: hidden;
   font-family: var(--font, 'Kanit'), sans-serif;
-  color: #fff;
+  color: var(--text, #fff);
   -webkit-font-smoothing: antialiased;
-  /* ข้อความใน config ที่มี Enter (\n) จะขึ้นบรรทัดใหม่จริง */
+  /* ข้อความใน config ที่มี Enter (
+) จะขึ้นบรรทัดใหม่จริง */
   white-space: pre-line;
+}
+
+/* ทุกชิ้น: .layer (ตำแหน่ง/ขนาด/ธีม) > .motion (ท่าเข้า/ออก) > .el (หน้าตาของชิ้น) */
+.layer { position: absolute; font-family: var(--font, 'Kanit'), sans-serif; color: var(--text, #fff); }
+.layer.fullscreen { inset: 0; pointer-events: none; }
+.layer.fullscreen .motion, .layer.fullscreen .el { width: 100%; height: 100%; }
+.motion { transform-origin: 50% 50%; }
+.el { position: relative; }
+.el-broken {
+  padding: 12px 18px; border: 2px dashed #fca5a5; border-radius: 8px;
+  background: rgba(127, 29, 29, .9); color: #fff;
+  font: 600 22px/1.3 system-ui, sans-serif; white-space: nowrap;
 }
 
 #viewport { position: relative; transform-origin: 0 0; }
@@ -73,9 +92,11 @@ html.mode-edit #viewport {
   background-position: 0 0, 0 24px, 24px -24px, -24px 0;
 }
 html.mode-edit #viewport.has-bg { background: #000; }
-html.mode-edit #stage [data-key] { cursor: move; user-select: none; }
-html.mode-edit #stage [data-key]:hover { outline: 3px dashed rgba(255, 255, 255, .45); outline-offset: 4px; }
-html.mode-edit #stage [data-key].ed-selected { outline: 4px dashed #22d3ee; outline-offset: 4px; }
+html.mode-edit #stage .layer { cursor: move; user-select: none; }
+html.mode-edit #stage .layer:hover { outline: 3px dashed rgba(255, 255, 255, .45); outline-offset: 4px; }
+html.mode-edit #stage .layer.ed-selected { outline: 4px dashed #22d3ee; outline-offset: 4px; }
+html.mode-edit #stage .layer.fullscreen { cursor: default; }
+html.mode-edit #stage .layer.fullscreen.ed-selected { outline-offset: -8px; }
 html.mode-edit #stage img { pointer-events: none; }
 
 #editor-panel {
