@@ -1,0 +1,5 @@
+.el-image img { display: block; height: auto; }
+.el-image .empty {
+  padding: 24px 32px; border: 2px dashed rgba(255, 255, 255, .5); border-radius: 8px;
+  font-size: 22px; color: rgba(255, 255, 255, .7); white-space: nowrap;
+}
