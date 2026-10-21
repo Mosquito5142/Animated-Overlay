@@ -362,6 +362,7 @@ export const ENTER_TYPES = ['none', 'fade', 'slide', 'pop'];
 export const EXIT_TYPES = ['none', 'fade', 'slide', 'pop'];
 export const DIRECTIONS = ['auto', 'left', 'right', 'top', 'bottom'];
 const DEFAULT_MOTION = 0.6;
+const EPS = 1e-6;
 
 const motionLength = (m) => (m?.type && m.type !== 'none' ? m.duration ?? DEFAULT_MOTION : 0);
 
@@ -379,7 +380,8 @@ export function layerSpan(layer, t, duration) {
   }
   const length = layer.end - start;
   const local = (((t - start) % duration) + duration) % duration;
-  return { visible: local < length, local, length, enter, exit: motionLength(layer.exit) };
+  // EPS: กันทศนิยมคลาดเคลื่อน เช่น (7.15 - 1) % 20 ได้ 6.1499999… ทำให้ยังแสดงอยู่ตอนถึง end พอดี
+  return { visible: local < length - EPS, local, length, enter, exit: motionLength(layer.exit) };
 }
 
 /** ขอบจอที่ใกล้กล่องที่สุด */
