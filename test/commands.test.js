@@ -68,3 +68,10 @@ test('moveLayer / removeLayer / toggleHidden / renameLayer', () => {
   cmd.removeLayer(cfg, 'shape-1');
   assert.deepEqual(cfg.layers.map((l) => l.id), ['text-1']);
 });
+
+test('removeLayer: id ที่ไม่มีอยู่ ต้องไม่ลบอะไร', () => {
+  const cfg = empty();
+  cmd.addLayer(cfg, 'text');
+  cmd.removeLayer(cfg, 'nope-1');
+  assert.deepEqual(cfg.layers.map((l) => l.id), ['text-1']);
+});

@@ -55,7 +55,8 @@ export function duplicateLayer(cfg, id, duration) {
 }
 
 export function removeLayer(cfg, id) {
-  cfg.layers.splice(indexOf(cfg, id), 1);
+  const i = indexOf(cfg, id);
+  if (i >= 0) cfg.layers.splice(i, 1);
 }
 
 /** เลื่อนลำดับการทับ: +1 = ขึ้นไปทับชิ้นถัดไป, -1 = ลง คืน false ถ้าเลื่อนไม่ได้ */
