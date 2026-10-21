@@ -199,5 +199,38 @@
         ]
       }
     }
-  ]
+  ],
+  "orientations": {
+    "portrait": {
+      "highlight-1": {
+        "top": 150,
+        "right": 40
+      },
+      "top-donate-1": {
+        "top": 260,
+        "right": 40
+      },
+      "sponsor-logo-1": {
+        "top": 360,
+        "right": 40
+      },
+      "webcam-frame-1": {
+        "left": 30,
+        "top": 150
+      },
+      "promo-bar-1": {
+        "left": 30,
+        "bottom": 360
+      },
+      "ticker-1": {
+        "left": 30,
+        "right": 160,
+        "bottom": 296
+      },
+      "notice-1": {
+        "left": 30,
+        "bottom": 470
+      }
+    }
+  }
 }

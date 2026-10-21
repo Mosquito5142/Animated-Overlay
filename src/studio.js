@@ -110,6 +110,38 @@ export async function listPresets() {
   return out.sort((a, b) => (a.name === 'blank' ? -1 : b.name === 'blank' ? 1 : a.name.localeCompare(b.name)));
 }
 
+const orientationOf = ([w, h]) => (h > w ? 'portrait' : 'landscape');
+
+/**
+ * เปลี่ยนขนาดจอเป็นแนวตั้ง (vertical = true) / แนวนอน (false) / คงเดิม (undefined)
+ * ถ้า preset มี orientations.<แนว> = { <id ชิ้น>: style } จะใช้ style นั้นแทนของเดิม
+ * (ตำแหน่งใน preset เป็นพิกเซลของแนวเดิม เปลี่ยนแนวแล้วชิ้นจะล้นหรือบีบจนหาย)
+ * ลบ orientations / description ออกเสมอ เพราะไม่ใช่ส่วนของงาน
+ */
+export function applyOrientation(data, vertical) {
+  const { orientations = {}, ...out } = data;
+  delete out.description;
+  if (vertical === true || vertical === false) {
+    const resolution = vertical ? [1080, 1920] : [1920, 1080];
+    const target = orientationOf(resolution);
+    if (Array.isArray(out.resolution) && orientationOf(out.resolution) !== target && orientations[target]) {
+      const styles = orientations[target];
+      out.layers = (out.layers || []).map((l) => (styles[l.id] ? { ...l, style: { ...styles[l.id] } } : l));
+    }
+    out.resolution = resolution;
+  }
+  return out;
+}
+
+/** อ่าน preset แล้วคืนข้อมูลงานใหม่ (ใช้ทั้งหน้า Studio และคำสั่ง new ใน CLI) */
+export async function presetProject(preset, vertical) {
+  if (!/^[\w-]+$/.test(preset || '')) throw new Error('เทมเพลตไม่ถูกต้อง');
+  const data = JSON.parse(await readFile(path.join(PRESETS, `${preset}.json`), 'utf8').catch(() => {
+    throw new Error(`ไม่พบเทมเพลต "${preset}"`);
+  }));
+  return applyOrientation(data, vertical);
+}
+
 /** สร้างไฟล์งานใหม่จาก preset (หน้าเปล่า/เทมเพลต) หรือทำสำเนาจากงานที่มีอยู่ (from) */
 export async function createConfig({ preset, from, name, vertical }, configDir = ROOT) {
   if (!NAME_RE.test(name || '')) throw new Error('ชื่องานใช้ได้แค่ ตัวอักษร ตัวเลข _ - (ไม่เกิน 60 ตัว)');
@@ -120,17 +152,11 @@ export async function createConfig({ preset, from, name, vertical }, configDir =
     if (!NAME_RE.test(from)) throw new Error('ชื่องานต้นฉบับไม่ถูกต้อง');
     const src = path.join(configDir, `${from}${SUFFIX}`);
     if (!(await exists(src))) throw new Error(`ไม่พบงาน "${from}"`);
-    data = await loadConfig(src);
+    data = applyOrientation(await loadConfig(src), vertical);
   } else {
-    if (!/^[\w-]+$/.test(preset || '')) throw new Error('เทมเพลตไม่ถูกต้อง');
-    data = JSON.parse(await readFile(path.join(PRESETS, `${preset}.json`), 'utf8').catch(() => {
-      throw new Error(`ไม่พบเทมเพลต "${preset}"`);
-    }));
+    data = await presetProject(preset, vertical);
   }
-  delete data.description;
   delete data.name;
-  if (vertical === true) data.resolution = [1080, 1920];
-  if (vertical === false) data.resolution = [1920, 1080];
   await writeFile(out, JSON.stringify(data, null, 2) + '\n');
   return { name, file: out };
 }

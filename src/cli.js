@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { readFile, writeFile, access } from 'node:fs/promises';
+import { writeFile, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
-import { startStudio, listPresets } from './studio.js';
+import { startStudio, listPresets, presetProject } from './studio.js';
 import { openExternal } from './open.js';
 import { composite, findFfmpeg } from './encode.js';
 
@@ -84,14 +84,11 @@ async function main() {
   if (cmd === 'new') {
     const [template, target] = rest;
     if (!template || !target) throw new Error('ใช้แบบนี้: new <เทมเพลต> <ไฟล์.config.json> [--vertical]');
-    const src = path.join(ROOT, 'presets', `${template}.json`);
-    const data = JSON.parse(await readFile(src, 'utf8').catch(() => {
-      throw new Error(`ไม่พบเทมเพลต "${template}" (ดูรายชื่อด้วยคำสั่ง templates)`);
-    }));
     const out = path.resolve(target);
     if (await access(out).then(() => true, () => false)) throw new Error(`มีไฟล์ ${target} อยู่แล้ว จะไม่เขียนทับ`);
-    delete data.description;
-    if (values.vertical) data.resolution = [1080, 1920];
+    const data = await presetProject(template, values.vertical ? true : undefined).catch((err) => {
+      throw new Error(`${err.message} (ดูรายชื่อด้วยคำสั่ง templates)`);
+    });
     await writeFile(out, JSON.stringify(data, null, 2) + '\n');
     console.log(`สร้าง ${target} แล้ว ต่อไป:`);
     console.log('  npm start                        เปิด Studio แล้วกด "ปรับแต่ง" ที่งานนี้');
