@@ -14,10 +14,13 @@ export default {
   },
   measure(s) {
     s.unitWidth = s.unit.offsetWidth;
-    const copies = Math.ceil(s.win.offsetWidth / Math.max(1, s.unitWidth)) + 1;
+    // ไม่มีข้อความ (กว้าง 0): ไม่ต้อง clone และไม่ต้องวิ่ง
+    if (!s.unitWidth) return;
+    const copies = Math.ceil(s.win.offsetWidth / s.unitWidth) + 1;
     for (let i = 0; i < copies; i++) s.track.appendChild(s.unit.cloneNode(true));
   },
   frame(s, t, span, ctx) {
+    if (!s.unitWidth) return;
     const ph = ctx.cycle(t, s.unitWidth / s.speed);
     s.track.style.transform = `translateX(${-ph * s.unitWidth}px)`;
   },

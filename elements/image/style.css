@@ -3,3 +3,5 @@
   padding: 24px 32px; border: 2px dashed rgba(255, 255, 255, .5); border-radius: 8px;
   font-size: 22px; color: rgba(255, 255, 255, .7); white-space: nowrap;
 }
+/* กรอบ "ยังไม่ได้เลือกรูป" มีไว้ให้เห็นตอนแก้ไขเท่านั้น ไม่ติดไปในไฟล์ที่เรนเดอร์ */
+html.mode-render .el-image .empty { display: none; }
