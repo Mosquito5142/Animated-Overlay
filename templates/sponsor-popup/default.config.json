@@ -43,6 +43,7 @@
     "popup2": {
       "enabled": true,
       "tag": "โปรโมชัน",
+      "image": "",
       "title": "ลด 50% วันนี้เท่านั้น",
       "subtitle": "กดลิงก์ใต้คลิปได้เลย",
       "color": "#22c55e",
@@ -60,6 +61,7 @@
     "popup3": {
       "enabled": true,
       "tag": "อย่าลืม",
+      "image": "",
       "title": "กดติดตามช่อง",
       "subtitle": "@yourchannel",
       "color": "#a855f7",

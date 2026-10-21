@@ -84,6 +84,26 @@ function waitForImages(root) {
   );
 }
 
+const loadedFonts = new Map();
+
+/** โหลดไฟล์ฟอนต์ (เช่น assets/fonts/uploads/x.ttf) คืนชื่อ family ที่ใช้ใน CSS หรือ null ถ้าโหลดไม่ได้ */
+export async function loadUserFont(file) {
+  if (loadedFonts.has(file)) return loadedFonts.get(file);
+  const family = `UserFont-${file.replace(/[^\w]+/g, '_')}`;
+  const src = file.startsWith('/') ? file : `/${file}`;
+  try {
+    const face = new FontFace(family, `url("${encodeURI(src)}")`);
+    await face.load();
+    document.fonts.add(face);
+    loadedFonts.set(file, family);
+    return family;
+  } catch (err) {
+    console.warn(`โหลดฟอนต์ไม่ได้: ${file}`, err);
+    loadedFonts.set(file, null);
+    return null;
+  }
+}
+
 export async function run(template) {
   const res = await fetch(configUrl(), { cache: 'no-store' });
   const config = await res.json();
@@ -117,7 +137,13 @@ export async function run(template) {
     stage.removeAttribute('style');
     stage.style.width = `${W}px`;
     stage.style.height = `${H}px`;
-    for (const [k, v] of Object.entries(cfg.theme || {})) stage.style.setProperty(`--${k}`, v);
+    const { fontFile, ...themeVars } = cfg.theme || {};
+    for (const [k, v] of Object.entries(themeVars)) stage.style.setProperty(`--${k}`, v);
+    // ฟอนต์ที่ผู้ใช้อัปโหลด: โหลดให้เสร็จก่อนวาด เพื่อให้ทุกเฟรมที่เรนเดอร์ใช้ฟอนต์เดียวกัน
+    if (fontFile) {
+      const family = await loadUserFont(fontFile);
+      if (family) stage.style.setProperty('--font', `"${family}", Kanit`);
+    }
 
     await template.build(stage, ctx);
     await document.fonts.ready;

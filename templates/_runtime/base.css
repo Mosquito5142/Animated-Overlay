@@ -14,6 +14,8 @@ html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
   font-family: var(--font, 'Kanit'), sans-serif;
   color: #fff;
   -webkit-font-smoothing: antialiased;
+  /* ข้อความใน config ที่มี Enter (\n) จะขึ้นบรรทัดใหม่จริง */
+  white-space: pre-line;
 }
 
 #viewport { position: relative; transform-origin: 0 0; }
@@ -117,3 +119,34 @@ html.mode-edit #stage img { pointer-events: none; }
 a.ed-link { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; background: #3a3a44; color: #fff; text-decoration: none; }
 .ed-nav { margin-top: 8px; flex-wrap: wrap; }
 .ed-warn { margin-top: 8px; font-size: 12px; color: #fbbf24; }
+/* ช่องรูป / อัปโหลด */
+.ed-image { padding: 6px; margin-left: -6px; margin-right: -6px; border: 1px dashed transparent; border-radius: 8px; }
+.ed-image.drop { border-color: #22d3ee; background: rgba(34, 211, 238, .08); }
+.ed-thumb {
+  flex: none; width: 64px; height: 44px; border-radius: 6px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  background-color: #2a2a30;
+  background-image: linear-gradient(45deg, #34343b 25%, transparent 25%), linear-gradient(-45deg, #34343b 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #34343b 75%), linear-gradient(-45deg, transparent 75%, #34343b 75%);
+  background-size: 12px 12px; background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+.ed-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ed-wrap { flex-wrap: wrap; gap: 6px; }
+#editor-panel .ed-wrap button { padding: 5px 9px; }
+.ed-path { font-size: 11px; color: #9aa0ad; margin-top: 4px; word-break: break-all; }
+.ed-msg { font-size: 12px; color: #4ade80; min-height: 0; }
+.ed-msg.bad { color: #f87171; }
+.ed-lib { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; max-height: 220px; overflow-y: auto; }
+#editor-panel .ed-lib-item {
+  height: 56px; padding: 4px; display: flex; align-items: center; justify-content: center;
+  background: #18181d; border: 1px solid #3a3a44;
+}
+#editor-panel .ed-lib-item:hover { border-color: #22d3ee; }
+.ed-lib-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* ปุ่มเลือกแบบแถบ (จัดข้อความ) */
+.ed-seg { gap: 0; }
+#editor-panel .ed-seg button { flex: 1; border-radius: 0; padding: 5px 4px; border-right: 1px solid #24242b; }
+#editor-panel .ed-seg button:first-child { border-radius: 6px 0 0 6px; }
+#editor-panel .ed-seg button:last-child { border-radius: 0 6px 6px 0; border-right: 0; }
+#editor-panel .ed-seg button.active { background: #2563eb; }
+#editor-panel textarea.ed-text { resize: none; line-height: 1.4; min-height: 0; }

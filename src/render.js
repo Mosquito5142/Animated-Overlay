@@ -5,14 +5,37 @@ import { chromium } from 'playwright';
 import { startServer } from './server.js';
 import { encodeVideo } from './encode.js';
 
-async function launchBrowser() {
-  try {
-    return await chromium.launch();
-  } catch (err) {
-    throw new Error(
-      `เปิด Chromium ไม่ได้ ลองรัน "npx playwright install chromium" ก่อน\n  ${err.message.split('\n')[0]}`,
-    );
+// ลำดับเบราว์เซอร์ที่ลองใช้: Chromium ของ Playwright → Edge (มีในทุกเครื่อง Windows) → Chrome
+const BROWSERS = [
+  { name: 'Chromium (Playwright)', options: {} },
+  { name: 'Microsoft Edge', options: { channel: 'msedge' } },
+  { name: 'Google Chrome', options: { channel: 'chrome' } },
+];
+let workingBrowser = null;
+
+export async function launchBrowser() {
+  const list = workingBrowser ? [workingBrowser, ...BROWSERS.filter((b) => b !== workingBrowser)] : BROWSERS;
+  const errors = [];
+  for (const b of list) {
+    try {
+      const browser = await chromium.launch(b.options);
+      workingBrowser = b;
+      return browser;
+    } catch (err) {
+      errors.push(`${b.name}: ${err.message.split('\n')[0]}`);
+    }
   }
+  throw new Error(
+    'เปิดเบราว์เซอร์สำหรับเรนเดอร์ไม่ได้ ติดตั้ง Microsoft Edge หรือ Google Chrome หรือรัน "npx playwright install chromium"\n  ' +
+      errors.join('\n  '),
+  );
+}
+
+/** ตรวจว่าเปิดเบราว์เซอร์ได้ไหม คืนชื่อเบราว์เซอร์ที่ใช้ */
+export async function checkBrowser() {
+  const b = await launchBrowser();
+  await b.close();
+  return workingBrowser.name;
 }
 
 /** เปิดเทมเพลตในเบราว์เซอร์แบบซ่อน แล้วรอจนพร้อมเรนเดอร์ */

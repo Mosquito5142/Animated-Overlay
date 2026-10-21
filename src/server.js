@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, rename, unlink } from 'node:fs/promises';
+import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { ROOT } from './config.js';
 
@@ -21,6 +22,9 @@ const TYPES = {
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
   '.mov': 'video/quicktime',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
 };
 
 const MAX_BODY = 1024 * 1024;
@@ -44,6 +48,41 @@ export function readJson(req) {
       }
     });
     req.on('error', reject);
+  });
+}
+
+/** เขียน body ของ request ลงไฟล์แบบ stream (ไฟล์ .part ก่อน ครบแล้วค่อย rename) */
+export function saveUpload(req, dest, limit) {
+  return new Promise((resolve, reject) => {
+    const tmp = `${dest}.part`;
+    const out = createWriteStream(tmp);
+    let size = 0;
+    let failed = false;
+    const fail = (err) => {
+      if (failed) return;
+      failed = true;
+      req.unpipe(out);
+      req.resume();
+      out.destroy();
+      unlink(tmp).catch(() => {}).finally(() => reject(err));
+    };
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limit) fail(new Error(`ไฟล์ใหญ่เกิน ${Math.round(limit / 1024 / 1024)}MB`));
+    });
+    req.on('error', fail);
+    out.on('error', fail);
+    out.on('finish', async () => {
+      if (failed) return;
+      if (size === 0) return fail(new Error('ไฟล์ว่างเปล่า'));
+      try {
+        await rename(tmp, dest);
+        resolve(size);
+      } catch (err) {
+        fail(err);
+      }
+    });
+    req.pipe(out);
   });
 }
 

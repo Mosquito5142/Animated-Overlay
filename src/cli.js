@@ -4,7 +4,8 @@ import { readFile, writeFile, access } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadConfig, ROOT } from './config.js';
 import { startStudio, listTemplates } from './studio.js';
-import { composite, run } from './encode.js';
+import { openExternal } from './open.js';
+import { composite, findFfmpeg } from './encode.js';
 
 const HELP = `
 Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่อนไหวพื้นหลังโปร่งใสสำหรับวางทับคลิป
@@ -28,6 +29,7 @@ Animated-Overlay — สร้างกรอบ/โฆษณาเคลื่�
   -d, --duration <วินาที>  ความยาว (ทับค่าใน config)
       --fps <ตัวเลข>       เฟรมต่อวินาที (ทับค่าใน config)
       --intro             ใส่แอนิเมชันเข้าฉากตอนต้น (ไฟล์จะไม่วนลูปเนียน)
+      --no-open           start: ไม่ต้องเปิดเบราว์เซอร์ให้อัตโนมัติ
       --overlay <ไฟล์>     ไฟล์ overlay ที่ใช้กับ composite (ค่าเริ่มต้น: output/<name>.mov)
   -p, --port <ตัวเลข>      พอร์ตของ Studio (ค่าเริ่มต้น: 5173)
   -h, --help
@@ -49,6 +51,7 @@ function parse() {
       overlay: { type: 'string' },
       port: { type: 'string', short: 'p', default: '5173' },
       help: { type: 'boolean', short: 'h' },
+      'no-open': { type: 'boolean' },
     },
   });
   const overrides = {};
@@ -118,7 +121,8 @@ async function main() {
         const page = `${url}/templates/${cfg.template}/index.html?c=${encodeURIComponent(nameFromConfig)}`;
         console.log(`  ${cmd === 'edit' ? 'หน้าปรับแต่ง' : 'หน้าดูตัวอย่าง'}: ${page}${cmd === 'edit' ? '&mode=edit' : ''}\n`);
       }
-      console.log('  เปิดลิงก์ด้านบนในเบราว์เซอร์ | กด Ctrl+C เพื่อปิด');
+      console.log('  เปิดลิงก์ด้านบนในเบราว์เซอร์ | ปิดหน้าต่างนี้หรือกด Ctrl+C เพื่อปิดโปรแกรม');
+      if (cmd === 'start' && !values['no-open']) openExternal(url);
       return;
     }
     case 'render': {
@@ -142,18 +146,17 @@ async function main() {
       return;
     }
     case 'check': {
-      const { out } = await run('ffmpeg', ['-hide_banner', '-encoders']);
-      for (const enc of ['prores_ks', 'libvpx-vp9']) {
-        console.log(`${out.includes(enc) ? '✓' : '✗'} ffmpeg encoder ${enc}`);
-      }
-      const { chromium } = await import('playwright').catch(() => {
-        throw new Error('✗ ยังไม่ได้ติดตั้ง Playwright (รัน: npm install แล้ว npx playwright install chromium)');
-      });
-      const b = await chromium.launch().catch((e) => e);
-      if (b instanceof Error) console.log('✗ Chromium (รัน: npx playwright install chromium)');
+      const ff = await findFfmpeg();
+      if (!ff.path) console.log('✗ FFmpeg (รัน npm install ใหม่ จะดาวน์โหลดมาให้)');
       else {
-        console.log('✓ Chromium');
-        await b.close();
+        console.log(`✓ FFmpeg (${ff.source === 'bundled' ? 'ติดมากับโปรแกรม' : 'ในเครื่อง'}: ${ff.path})`);
+        for (const [enc, ok] of Object.entries(ff.encoders)) console.log(`  ${ok ? '✓' : '✗'} encoder ${enc}`);
+      }
+      try {
+        const { checkBrowser } = await loadRenderer();
+        console.log(`✓ เบราว์เซอร์สำหรับเรนเดอร์: ${await checkBrowser()}`);
+      } catch (err) {
+        console.log(`✗ ${err.message}`);
       }
       console.log(`โฟลเดอร์โปรเจกต์: ${ROOT}`);
       return;

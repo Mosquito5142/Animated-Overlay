@@ -1,9 +1,16 @@
 // หน้าแก้ไขแบบลากวาง (npm run edit)
 // - ลากชิ้นส่วนบนจอเพื่อย้าย / ปุ่มลูกศรขยับทีละ 1px (Shift = 10px)
-// - เปิด/ปิด, แก้ข้อความ, ปรับขนาด, เปลี่ยนสี จากแผงด้านขวา
+// - เปิด/ปิด, แก้ข้อความ (กด Enter ขึ้นบรรทัดใหม่), ปรับขนาด, เปลี่ยนสี, อัปโหลดรูป/ฟอนต์ จากแผงด้านขวา
+// - ลากไฟล์รูปมาวางบนจอ รูปจะเข้าชิ้นที่วางทับ (หรือชิ้นที่เลือกอยู่)
 // - บันทึก (Ctrl+S) จะเขียนกลับลงไฟล์ config ผ่าน POST /__save
 
 import { el, applyStyle, setPreviewBackground, saveUrl, modeUrl, configName } from './runtime.js';
+import { uploadFile, pickFiles, listAssets } from './upload.js';
+
+const IMAGE_KEYS = new Set(['image', 'logo']);
+const IMAGE_PATH = /\.(png|svg|jpe?g|webp|gif)$/i;
+const isImageField = (k, v) => IMAGE_KEYS.has(k) || (typeof v === 'string' && IMAGE_PATH.test(v));
+const ALIGN = [['', 'ค่าเริ่มต้น'], ['left', 'ซ้าย'], ['center', 'กลาง'], ['right', 'ขวา']];
 
 const FIELD_LABELS = {
   text: 'ข้อความ', name: 'ชื่อ', amount: 'จำนวนเงิน', currency: 'สกุลเงิน',
@@ -439,6 +446,24 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
       renderPanel();
     });
 
+    // จัดข้อความ ซ้าย/กลาง/ขวา (มีผลกับข้อความหลายบรรทัด)
+    const alignRow = field(props, 'จัดข้อความ');
+    alignRow.classList.add('ed-seg');
+    for (const [value, label] of ALIGN) {
+      const b = el('button', (cfg.style?.['text-align'] || '') === value ? 'active' : '', alignRow, label);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        snapshot();
+        cfg.style = { ...(cfg.style || {}) };
+        if (value) cfg.style['text-align'] = value;
+        else delete cfg.style['text-align'];
+        if (!Object.keys(cfg.style).length) delete cfg.style;
+        if (node) node.style.textAlign = value;
+        markDirty();
+        for (const x of alignRow.children) x.classList.toggle('active', x === b);
+      });
+    }
+
     // ฟิลด์อื่นๆ ตามชนิดข้อมูล
     for (const [k, v] of Object.entries(cfg)) {
       if (k === 'enabled' || k === 'style') continue;
@@ -494,6 +519,10 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
   }
 
   function addField(parent, obj, k, v) {
+    if (isImageField(k, v)) {
+      imageField(parent, FIELD_LABELS[k] || k, 'image', () => obj[k], (val) => (obj[k] = val));
+      return;
+    }
     const row = field(parent, FIELD_LABELS[k] || k);
     if (typeof v === 'boolean') {
       const cb = el('input', '', row);
@@ -520,9 +549,14 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
       sel.value = v;
       sel.addEventListener('change', onEdit((n) => (obj[k] = n.value)));
     } else if (typeof v === 'string') {
-      const inp = el('input', '', row);
-      Object.assign(inp, { type: 'text', value: v });
-      inp.addEventListener('input', onEdit((n) => (obj[k] = n.value)));
+      // ข้อความ: กด Enter เพื่อขึ้นบรรทัดใหม่ ช่องจะสูงขึ้นตามจำนวนบรรทัด
+      const ta = el('textarea', 'ed-text', row);
+      ta.value = v;
+      ta.placeholder = 'Enter = ขึ้นบรรทัดใหม่';
+      const grow = () => (ta.rows = Math.max(1, ta.value.split('\n').length));
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('input', onEdit((n) => (obj[k] = n.value)));
     } else if (Array.isArray(v) && v.every((x) => typeof x === 'number')) {
       v.forEach((num, i) => {
         const inp = el('input', 'ed-small', row);
@@ -565,10 +599,134 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
     }
   }
 
+  /**
+   * ช่องเลือกรูป: รูปย่อ + อัปโหลด + เลือกจากคลัง + ล้าง และลากไฟล์มาวางได้
+   * kind = 'image' (รูปในชิ้นส่วน) หรือ 'background' (รูป/คลิปพื้นหลังตัวอย่าง)
+   */
+  function imageField(parent, label, kind, get, set) {
+    const wrapEl = el('div', 'ed-field ed-image', parent);
+    el('span', 'ed-label', wrapEl, label);
+    const top = el('div', 'ed-row', wrapEl);
+    const thumb = el('div', 'ed-thumb', top);
+    const buttons = el('div', 'ed-row ed-wrap', top);
+    const upBtn = el('button', '', buttons, '📁 อัปโหลด');
+    const libBtn = el('button', '', buttons, '🖼 คลัง');
+    const clearBtn = el('button', '', buttons, '✕');
+    clearBtn.title = 'ไม่ใช้รูป';
+    const pathEl = el('div', 'ed-path', wrapEl);
+    const msg = el('div', 'ed-msg', wrapEl);
+    const lib = el('div', 'ed-lib', wrapEl);
+    lib.hidden = true;
+
+    const show = () => {
+      const val = get() || '';
+      thumb.replaceChildren();
+      pathEl.textContent = val || '(ยังไม่มีรูป) ลากไฟล์มาวางตรงนี้ได้';
+      if (!val) return;
+      const src = val.startsWith('/') || /^https?:/.test(val) ? val : `/${val}`;
+      if (/\.(mp4|webm|mov)$/i.test(val)) el('span', '', thumb, '🎬');
+      else el('img', '', thumb).src = src;
+    };
+    const apply = async (val) => {
+      snapshot();
+      set(val);
+      markDirty();
+      show();
+      if (kind === 'background') setPreviewBackground(val);
+      else await rebuild();
+    };
+    const doUpload = async (files) => {
+      const file = files[0];
+      if (!file) return;
+      msg.className = 'ed-msg';
+      msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
+      try {
+        const res = await uploadFile(file, kind);
+        await apply(res.path);
+        msg.textContent = res.converted ? `✓ แปลงเป็น ${res.name} แล้ว` : `✓ อัปโหลด ${res.name} แล้ว`;
+      } catch (err) {
+        msg.className = 'ed-msg bad';
+        msg.textContent = `✗ ${err.message}`;
+      }
+    };
+
+    upBtn.addEventListener('click', async () => doUpload(await pickFiles(kind)));
+    clearBtn.addEventListener('click', () => apply(''));
+    libBtn.addEventListener('click', async () => {
+      if (!lib.hidden) {
+        lib.hidden = true;
+        return;
+      }
+      lib.replaceChildren();
+      const items = (await listAssets()).filter((a) => a.type === 'image' || (kind === 'background' && a.type === 'video'));
+      if (!items.length) el('div', 'ed-hint', lib, 'ยังไม่มีรูปในคลัง กด 📁 อัปโหลด');
+      for (const a of items) {
+        const b = el('button', 'ed-lib-item', lib);
+        b.title = a.name;
+        if (a.type === 'video') el('span', '', b, '🎬');
+        else el('img', '', b).src = `/${a.path}`;
+        b.addEventListener('click', () => {
+          lib.hidden = true;
+          apply(a.path);
+        });
+      }
+      lib.hidden = false;
+    });
+    wrapEl.addEventListener('dragover', (e) => {
+      if (e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault();
+        wrapEl.classList.add('drop');
+      }
+    });
+    wrapEl.addEventListener('dragleave', () => wrapEl.classList.remove('drop'));
+    wrapEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      wrapEl.classList.remove('drop');
+      doUpload([...e.dataTransfer.files]);
+    });
+    show();
+    return { upload: doUpload };
+  }
+
+  // ลากไฟล์รูปมาวางบนจอ: ใส่ให้ชิ้นที่วางทับ (ถ้าไม่ทับชิ้นไหนใช้ชิ้นที่เลือกอยู่)
+  viewport.addEventListener('dragover', (e) => {
+    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  });
+  viewport.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    const key = e.target.closest?.('[data-key]')?.dataset.key || selected;
+    const cfg = key && working.elements[key];
+    const imgKey = cfg && Object.keys(cfg).find((k) => isImageField(k, cfg[k]));
+    if (!imgKey) {
+      status.textContent = '✗ ชิ้นนี้ไม่มีช่องรูป (ลากไปวางบนป้ายที่มีโลโก้ หรือเลือกชิ้นก่อน)';
+      status.classList.add('dirty');
+      return;
+    }
+    if (selected !== key) select(key);
+    status.textContent = `กำลังอัปโหลด ${files[0].name} ...`;
+    try {
+      const res = await uploadFile(files[0], 'image');
+      snapshot();
+      cfg[imgKey] = res.path;
+      markDirty();
+      await rebuild();
+      renderPanel();
+      status.textContent = res.converted ? `● แปลงเป็น ${res.name} แล้ว (ยังไม่ได้บันทึก)` : '● ยังไม่ได้บันทึก';
+    } catch (err) {
+      status.textContent = `✗ ${err.message}`;
+      status.classList.add('dirty');
+    }
+  });
+
   function renderTheme() {
     const box = themeSec.querySelector('.ed-body') || el('div', 'ed-body', themeSec);
     box.replaceChildren();
+    fontField(box);
     for (const [k, v] of Object.entries(working.theme)) {
+      if (k === 'font' || k === 'fontFile') continue;
       const row = field(box, THEME_LABELS[k] || k);
       const isColor = /^#[0-9a-f]{6}$/i.test(v);
       const inp = el('input', '', row);
@@ -578,6 +736,52 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
         stage.style.setProperty(`--${k}`, n.value);
       }));
     }
+  }
+
+  /** เลือกฟอนต์: Kanit ที่มากับโปรแกรม หรือฟอนต์ที่อัปโหลดเอง */
+  function fontField(box) {
+    const wrapEl = el('div', 'ed-field', box);
+    el('span', 'ed-label', wrapEl, 'ฟอนต์');
+    const row = el('div', 'ed-row', wrapEl);
+    const sel = el('select', '', row);
+    const upBtn = el('button', '', row, '📁 อัปโหลด');
+    const msg = el('div', 'ed-msg', wrapEl);
+    const fill = async () => {
+      const fonts = (await listAssets().catch(() => [])).filter((a) => a.type === 'font');
+      sel.replaceChildren();
+      el('option', '', sel, 'Kanit (มากับโปรแกรม)').value = '';
+      for (const f of fonts) el('option', '', sel, f.name).value = f.path;
+      sel.value = working.theme.fontFile || '';
+    };
+    const choose = async (file) => {
+      snapshot();
+      if (file) {
+        working.theme.fontFile = file;
+        working.theme.font = file.split('/').pop().replace(/\.[^.]+$/, '');
+      } else {
+        delete working.theme.fontFile;
+        working.theme.font = 'Kanit';
+      }
+      markDirty();
+      await rebuild();
+    };
+    sel.addEventListener('change', () => choose(sel.value));
+    upBtn.addEventListener('click', async () => {
+      const [file] = await pickFiles('font');
+      if (!file) return;
+      msg.className = 'ed-msg';
+      msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
+      try {
+        const res = await uploadFile(file, 'font');
+        await choose(res.path);
+        await fill();
+        msg.textContent = `✓ ใช้ฟอนต์ ${res.name} แล้ว`;
+      } catch (err) {
+        msg.className = 'ed-msg bad';
+        msg.textContent = `✗ ${err.message}`;
+      }
+    });
+    fill();
   }
 
   function renderGeneral() {
@@ -594,15 +798,8 @@ export async function startEditor({ stage, ctx, template, mount, renderFrame }) 
         markDirty();
       }
     });
-    const bgRow = field(box, 'รูป/คลิปพื้นหลังตัวอย่าง (ไว้ใน assets/)');
-    const bg = el('input', '', bgRow);
-    Object.assign(bg, { type: 'text', value: working.preview.background || '', placeholder: 'assets/sample.jpg' });
-    bg.addEventListener('change', () => {
-      snapshot();
-      working.preview.background = bg.value.trim();
-      setPreviewBackground(working.preview.background);
-      markDirty();
-    });
+    imageField(box, 'รูป/คลิปพื้นหลังตัวอย่าง (ใช้ดูตำแหน่งเท่านั้น ไม่ติดไปในไฟล์ที่เรนเดอร์)', 'background',
+      () => working.preview.background, (val) => (working.preview.background = val));
   }
 
   renderPanel();

@@ -17,6 +17,41 @@ export function run(cmd, args, { quiet = true } = {}) {
   });
 }
 
+const NEEDED_ENCODERS = ['prores_ks', 'libvpx-vp9'];
+let ffmpegInfo = null;
+
+/**
+ * หา FFmpeg ที่ใช้ได้: ตัวที่ติดมากับ npm (ffmpeg-static) ก่อน ถ้าไม่มีหรือ encoder ไม่ครบค่อยใช้ ffmpeg ใน PATH
+ * คืน { path, source: 'bundled' | 'system', encoders: { prores_ks: bool, ... } } หรือ { path: null } ถ้าไม่มีเลย
+ */
+export async function findFfmpeg() {
+  if (ffmpegInfo) return ffmpegInfo;
+  const candidates = [];
+  try {
+    const bundled = (await import('ffmpeg-static')).default;
+    if (bundled) candidates.push({ path: bundled, source: 'bundled' });
+  } catch {
+    // ยังไม่ได้ npm install หรือดาวน์โหลดไม่สำเร็จ
+  }
+  candidates.push({ path: 'ffmpeg', source: 'system' });
+  let fallback = null;
+  for (const c of candidates) {
+    const { out } = await run(c.path, ['-hide_banner', '-encoders']).catch(() => ({ out: null }));
+    if (out == null) continue;
+    const encoders = Object.fromEntries(NEEDED_ENCODERS.map((e) => [e, out.includes(e)]));
+    const info = { ...c, encoders };
+    if (NEEDED_ENCODERS.every((e) => encoders[e])) return (ffmpegInfo = info);
+    fallback ||= info;
+  }
+  return (ffmpegInfo = fallback || { path: null, source: null, encoders: {} });
+}
+
+async function ffmpeg(args) {
+  const info = await findFfmpeg();
+  if (!info.path) throw new Error('ไม่พบโปรแกรม FFmpeg: ลองรัน "npm install" ใหม่อีกครั้ง (จะดาวน์โหลด FFmpeg มาให้เอง)');
+  return run(info.path, args);
+}
+
 // ตั้งค่า FFmpeg สำหรับแต่ละ format (ทุกแบบเก็บ Alpha channel)
 const PRESETS = {
   // ProRes 4444 + alpha: โปรแกรมตัดต่อแทบทุกตัวรองรับ (ไฟล์ใหญ่)
@@ -35,7 +70,7 @@ const PRESETS = {
 export async function encodeVideo(format, framesDir, fps, outBase) {
   const preset = PRESETS[format];
   const out = `${outBase}.${preset.ext}`;
-  await run('ffmpeg', [
+  await ffmpeg([
     '-hide_banner', '-loglevel', 'error', '-y',
     '-framerate', String(fps),
     '-i', `${framesDir}/frame-%05d.png`,
@@ -62,6 +97,6 @@ export async function composite({ background, overlay, out, duration }) {
   ];
   if (isImage) args.push('-t', String(duration));
   args.push(out);
-  await run('ffmpeg', args);
+  await ffmpeg(args);
   return out;
 }
