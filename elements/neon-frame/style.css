@@ -1,0 +1,4 @@
+.el-neon-frame svg { position: absolute; inset: 0; overflow: visible; }
+.el-neon-frame svg * { pointer-events: visiblePainted; }
+.el-neon-frame .glow-a { filter: drop-shadow(0 0 4px var(--primary)) drop-shadow(0 0 12px var(--primary)); }
+.el-neon-frame .glow-b { filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 12px var(--accent)); }
