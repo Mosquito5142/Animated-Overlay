@@ -124,7 +124,11 @@ html.mode-edit #stage img { pointer-events: none; }
 .ed-row { display: flex; gap: 8px; align-items: center; }
 .ed-list { display: flex; flex-direction: column; gap: 2px; }
 .ed-item { display: flex; gap: 8px; align-items: center; padding: 4px 6px; border-radius: 5px; }
-.ed-item span { flex: 1; cursor: pointer; }
+.ed-item { cursor: pointer; }
+.ed-item .ed-type { flex: none; width: 22px; text-align: center; }
+.ed-item .ed-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-item.hidden .ed-name, .ed-item.hidden .ed-type { opacity: .45; }
+.ed-item input[type=text] { flex: 1; }
 .ed-item.active { background: #164e63; }
 .ed-field { display: block; margin-top: 8px; }
 .ed-label { display: block; font-size: 12px; color: #9aa0ad; margin-bottom: 3px; }
@@ -170,3 +174,36 @@ a.ed-link { display: inline-flex; align-items: center; padding: 6px 12px; border
 #editor-panel .ed-seg button:last-child { border-radius: 0 6px 6px 0; border-right: 0; }
 #editor-panel .ed-seg button.active { background: #2563eb; }
 #editor-panel textarea.ed-text { resize: none; line-height: 1.4; min-height: 0; }
+
+/* ---------- หน้าแก้ไข: Layers / คุณสมบัติ / คลังชิ้นส่วน ---------- */
+.ed-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: rgba(255, 255, 255, .55); font-size: 18px; pointer-events: none;
+}
+.ed-empty[hidden] { display: none; }
+.ed-sec-head { display: flex; align-items: center; justify-content: space-between; }
+#editor-panel button.ed-icon { padding: 2px 7px; background: transparent; }
+#editor-panel button.ed-icon:hover { background: #3a3a44; }
+#editor-panel button.ed-icon:disabled { opacity: .25; }
+.ed-group { margin-top: 14px; padding-top: 8px; border-top: 1px dashed #33333c; font-size: 12px; font-weight: 700; color: #c4c7cf; }
+.ed-col { flex-direction: column; align-items: stretch; }
+.ed-row .ed-hint { margin: 0; }
+
+.ed-modal-back {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .6);
+  font: 14px/1.4 system-ui, sans-serif; color: #e6e6ea;
+}
+.ed-modal { width: min(720px, 92vw); max-height: 86vh; overflow-y: auto; padding: 16px 20px 20px; border-radius: 12px; background: #24242b; }
+.ed-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+.ed-modal h4 { margin: 16px 0 8px; font-size: 13px; color: #9aa0ad; }
+.ed-modal button.ed-icon { padding: 4px 10px; border: 0; border-radius: 6px; background: #3a3a44; color: #fff; cursor: pointer; }
+.ed-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.ed-picker-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border: 1px solid #3a3a44; border-radius: 10px;
+  background: #2c2c35; color: #fff; font: inherit; cursor: pointer;
+}
+.ed-picker-card:hover { border-color: #22d3ee; background: #164e63; }
+.ed-picker-icon { font-size: 28px; }
