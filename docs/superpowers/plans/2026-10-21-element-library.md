@@ -634,13 +634,12 @@ export const CATALOG = {
   // ---------- พื้นฐาน ----------
   text: {
     label: 'ข้อความ', icon: '📝', category: 'basic',
-    defaults: { props: { text: 'ข้อความ', size: 64, color: '', weight: '700', align: 'left', stroke: '', strokeWidth: 0, shadow: true } },
+    defaults: { props: { text: 'ข้อความ', size: 64, color: '', weight: '700', stroke: '', strokeWidth: 0, shadow: true } },
     fields: {
       text: { label: 'ข้อความ', type: 'text' },
       size: { label: 'ขนาดตัวอักษร (px)', type: 'number' },
       color: { label: 'สีตัวอักษร', type: 'color' },
       weight: { label: 'ความหนา', type: 'select', choices: ['400', '600', '700', '800', '900'] },
-      align: { label: 'จัดแนว', type: 'select', choices: ['left', 'center', 'right'] },
       stroke: { label: 'สีขอบตัวอักษร', type: 'color' },
       strokeWidth: { label: 'ความหนาขอบ (px)', type: 'number' },
       shadow: { label: 'เงา', type: 'boolean' },
@@ -1416,6 +1415,39 @@ function markBroken(item, message) {
   item.root.textContent = `⚠ ${message}`;
 }
 
+const loadedFonts = new Map();
+
+/** โหลดไฟล์ฟอนต์ (เช่น assets/fonts/uploads/x.ttf) คืนชื่อ family ที่ใช้ใน CSS หรือ null ถ้าโหลดไม่ได้ */
+export async function loadUserFont(file) {
+  if (loadedFonts.has(file)) return loadedFonts.get(file);
+  const family = `UserFont-${file.replace(/[^\w]+/g, '_')}`;
+  const src = file.startsWith('/') ? file : `/${file}`;
+  try {
+    const face = new FontFace(family, `url("${encodeURI(src)}")`);
+    await face.load();
+    document.fonts.add(face);
+    loadedFonts.set(file, family);
+    return family;
+  } catch (err) {
+    console.warn(`โหลดฟอนต์ไม่ได้: ${file}`, err);
+    loadedFonts.set(file, null);
+    return null;
+  }
+}
+
+/**
+ * ใส่ธีมเป็น CSS variable (ใช้ทั้งธีมของโปรเจกต์ที่ #stage และธีมเฉพาะชิ้นที่ .layer)
+ * fontFile = ฟอนต์ที่ผู้ใช้อัปโหลด: โหลดให้เสร็จก่อนวาด เพื่อให้ทุกเฟรมที่เรนเดอร์ใช้ฟอนต์เดียวกัน
+ */
+async function applyTheme(node, theme = {}) {
+  const { fontFile, ...vars } = theme;
+  for (const [k, v] of Object.entries(vars)) node.style.setProperty(`--${k}`, v);
+  if (fontFile) {
+    const family = await loadUserFont(fontFile);
+    if (family) node.style.setProperty('--font', `"${family}", Kanit`);
+  }
+}
+
 /** มีตำแหน่งแล้วหรือยัง (ยังไม่มี → stage จัดให้ เช่น กลางจอ) */
 const isPlaced = (s) => !!s && ['left', 'right', 'top', 'bottom'].some((k) => s[k] != null && s[k] !== 'auto');
 
@@ -1464,7 +1496,7 @@ export async function run() {
     stage.removeAttribute('style');
     stage.style.width = `${W}px`;
     stage.style.height = `${H}px`;
-    for (const [k, v] of Object.entries(cfg.theme || {})) stage.style.setProperty(`--${k}`, v);
+    await applyTheme(stage, cfg.theme);
 
     items = [];
     for (const layer of cfg.layers || []) {
@@ -1474,7 +1506,7 @@ export async function run() {
       wrap.dataset.id = layer.id;
       const motion = el('div', 'motion', wrap);
       const root = el('div', `el el-${layer.type}`, motion);
-      for (const [k, v] of Object.entries(layer.theme || {})) wrap.style.setProperty(`--${k}`, v);
+      await applyTheme(wrap, layer.theme);
       if (!def?.fullscreen) applyStyle(wrap, layer.style);
       const item = { layer, def, wrap, motion, root, mod: null, state: null, broken: null };
       items.push(item);
@@ -1629,7 +1661,7 @@ function startPreview(stage, ctx, renderFrame) {
 
 - [ ] **Step 5: แก้ `templates/_runtime/base.css`**
 
-(ก) แทนที่ก้อน `#stage { ... }` เดิม (บรรทัด 10–17) ด้วย:
+(ก) แทนที่ก้อน `#stage { ... }` เดิม (ก้อนแรกของไฟล์ที่มี `white-space: pre-line`) ด้วย:
 
 ```css
 #stage {
@@ -1645,6 +1677,8 @@ function startPreview(stage, ctx, renderFrame) {
   font-family: var(--font, 'Kanit'), sans-serif;
   color: var(--text, #fff);
   -webkit-font-smoothing: antialiased;
+  /* ข้อความใน config ที่มี Enter (\n) จะขึ้นบรรทัดใหม่จริง */
+  white-space: pre-line;
 }
 
 /* ทุกชิ้น: .layer (ตำแหน่ง/ขนาด/ธีม) > .motion (ท่าเข้า/ออก) > .el (หน้าตาของชิ้น) */
@@ -1717,7 +1751,7 @@ export default {
 ```css
 .el-highlight {
   will-change: transform, opacity;
-  height: 86px; padding: 0 34px;
+  min-height: 86px; padding: 6px 34px; box-sizing: border-box;
   display: flex; align-items: center;
   background: var(--primary);
   border-radius: 6px;
@@ -1736,7 +1770,7 @@ export default {
   transform: translateX(-200px) skewX(-20deg);
   pointer-events: none;
 }
-#stage.portrait .el-highlight { height: 80px; padding: 0 28px; }
+#stage.portrait .el-highlight { min-height: 80px; padding: 6px 28px; }
 #stage.portrait .el-highlight .label { font-size: 48px; }
 ```
 
@@ -1782,7 +1816,7 @@ export default {
 ```css
 .el-top-donate {
   will-change: transform, opacity;
-  width: 280px; height: 74px;
+  min-width: 280px; min-height: 74px;
   display: flex;
   background: var(--panel);
   border: 2px solid rgba(255, 255, 255, .12);
@@ -1965,7 +1999,7 @@ export default {
 ```css
 .el-promo-bar {
   will-change: transform, opacity;
-  height: 94px;
+  min-height: 94px;
   display: flex; align-items: center;
   background: linear-gradient(90deg, var(--panel) 0%, rgba(20, 20, 24, .92) 100%);
   border: 2px solid rgba(255, 255, 255, .1);
@@ -1974,14 +2008,14 @@ export default {
   overflow: hidden;
 }
 .el-promo-bar .logo {
-  height: 100%; padding: 0 16px; display: flex; align-items: center;
+  align-self: stretch; padding: 0 16px; display: flex; align-items: center;
   background: rgba(255, 255, 255, .04);
 }
 .el-promo-bar .logo img { max-height: 74px; max-width: 160px; object-fit: contain; }
-.el-promo-bar .text { padding: 0 22px; font-size: 44px; font-weight: 700; white-space: nowrap; }
+.el-promo-bar .text { padding: 6px 22px; font-size: 44px; font-weight: 700; line-height: 1.15; white-space: pre; }
 .el-promo-bar .price-box {
   display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-  height: 100%; padding: 0 22px 0 18px;
+  align-self: stretch; padding: 6px 22px 6px 18px;
   background: rgba(0, 0, 0, .35);
 }
 .el-promo-bar .old { font-size: 18px; color: #fff; background: #2563eb; padding: 0 8px; border-radius: 4px; line-height: 1.35; text-decoration: line-through; }
@@ -2041,7 +2075,7 @@ export default {
   overflow: hidden;
 }
 .el-ticker .tag {
-  flex: none; display: flex; align-items: center; padding: 0 16px;
+  flex: none; display: flex; align-items: center; padding: 0 16px; white-space: nowrap;
   background: var(--primary); font-size: 20px; font-weight: 800; font-style: italic;
 }
 .el-ticker .window { position: relative; flex: 1; overflow: hidden; }
@@ -2220,8 +2254,8 @@ export default {
 .el-popup-card .logo { flex: none; display: flex; align-items: center; justify-content: center; }
 .el-popup-card .logo img { max-height: 84px; max-width: 220px; object-fit: contain; }
 .el-popup-card .texts { display: flex; flex-direction: column; min-width: 0; }
-.el-popup-card .title { font-size: 40px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
-.el-popup-card .subtitle { font-size: 24px; font-weight: 400; line-height: 1.25; opacity: .9; white-space: nowrap; color: var(--accent); }
+.el-popup-card .title { font-size: 40px; font-weight: 700; line-height: 1.1; white-space: pre; }
+.el-popup-card .subtitle { font-size: 24px; font-weight: 400; line-height: 1.25; opacity: .9; white-space: pre; color: var(--accent); }
 .el-popup-card .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--c); transform-origin: left center; }
 
 /* แบบเล็ก: ป้ายถาวรมุมจอ */
@@ -2469,7 +2503,7 @@ export default {
   border: 3px solid var(--primary);
   border-radius: 999px;
   box-shadow: 0 0 12px var(--primary), inset 0 0 10px color-mix(in srgb, var(--primary) 30%, transparent);
-  white-space: nowrap;
+  white-space: pre;
 }
 .el-neon-label .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .el-neon-label .text { font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: 1px; text-shadow: 0 0 10px var(--primary); }
@@ -2569,7 +2603,8 @@ Expected: FAIL ที่ `text/index.js` ไม่มี
 `elements/text/index.js`:
 
 ```js
-// ข้อความอิสระ: ขนาด/สี/ความหนา/จัดแนว/ขอบ/เงา ตั้งได้ (ไม่ใส่สี = ใช้สีตัวอักษรของธีม)
+// ข้อความอิสระ: ขนาด/สี/ความหนา/ขอบ/เงา ตั้งได้ (ไม่ใส่สี = ใช้สีตัวอักษรของธีม)
+// การจัดซ้าย/กลาง/ขวา ใช้ปุ่ม "จัดข้อความ" ที่มีให้ทุกชิ้น (style.text-align)
 import { el } from '../../templates/_runtime/dom.js';
 
 export default {
@@ -2578,7 +2613,6 @@ export default {
     Object.assign(node.style, {
       fontSize: `${props.size ?? 64}px`,
       fontWeight: String(props.weight ?? '700'),
-      textAlign: props.align ?? 'left',
     });
     if (props.color) node.style.color = props.color;
     if (props.stroke && props.strokeWidth > 0) node.style.webkitTextStroke = `${props.strokeWidth}px ${props.stroke}`;
@@ -2876,7 +2910,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `src/config.js` (`loadConfig` = ตัวโหลด v2, ลบตัวโหลดเดิม)
 - Modify: `src/studio.js` (preset, `createConfig`, `getConfig`, `onSave`, `listConfigs`, API)
 - Modify: `src/cli.js` (`templates`, `new`, ลิงก์, ตัด `--intro`)
-- Modify: `src/render.js:28` (เปิด `stage.html`)
+- Modify: `src/render.js` (`openTemplate` เปิด `stage.html`)
 - Modify: `studio/index.html`, `studio/studio.js`, `studio/studio.css`
 - Modify: `test/config.test.js` (`loadProject` → `loadConfig`)
 - Delete: `templates/sponsor-gaming/`, `templates/sponsor-popup/`, `templates/neon-frame/`, `templates/_runtime/runtime.js`
@@ -3097,7 +3131,7 @@ export async function createConfig({ preset, from, name, vertical }, configDir =
         const page = `${url}/templates/_runtime/stage.html?c=${encodeURIComponent(nameFromConfig)}`;
 ```
 
-(ช) แก้ URL ใน `src/render.js` บรรทัด 28 จาก
+(ช) แก้ URL ใน `src/render.js` (ในฟังก์ชัน `openTemplate`) จาก
 
 ```js
   await page.goto(`${url}/templates/${cfg.template}/index.html?mode=render`);
@@ -3243,15 +3277,151 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 10: หน้าแก้ไขแบบใหม่ (คลังชิ้นส่วน + Layers + แผงคุณสมบัติ)
 
+หน้าแก้ไขเดิม (`editor.js`) มีระบบอัปโหลดรูป/ฟอนต์ ช่องข้อความหลายบรรทัด ปุ่มจัดข้อความ และลากไฟล์มาวางบนจอ อยู่แล้ว (จาก commit `5821d85`) งานนี้ต้องคงความสามารถเหล่านี้ไว้ครบ โดยย้ายส่วนอัปโหลดไปไว้ใน `editor/media.js` ซึ่งเรียกใช้ `templates/_runtime/upload.js` ตัวเดิม (ไม่ต้องแก้)
+
 **Files:**
-- Create: `templates/_runtime/editor/index.js`, `library.js`, `layers.js`, `inspector.js`
+- Create: `templates/_runtime/editor/index.js`, `library.js`, `layers.js`, `inspector.js`, `media.js`
 - Modify: `templates/_runtime/base.css` (สไตล์ Layers, inspector, หน้าต่างคลัง, ข้อความหน้าว่าง)
 - Delete: `templates/_runtime/editor.js`
 
 **Interfaces:**
-- Consumes: `startEditor({ stage, ctx, mount, renderFrame })` ถูกเรียกจาก `stage.js` (Task 5), `commands.*` (Task 8), `CATALOG`/`CATEGORIES`, `ENTER_TYPES`/`EXIT_TYPES`/`DIRECTIONS`, `setPreviewBackground`/`saveUrl`/`modeUrl`/`configName` จาก `stage.js`
-- Produces (store ที่ส่งให้แผงต่างๆ): `{ working, ctx, coords, selected (getter), layer(id), nodeOf(id), select(id|null), act(fn) → Promise<ผลของ fn>, onEdit(apply) → (event) => void, refresh(), refreshLayers(), commitPosition(id, node, keepWidth), beginMove(node) }`
-- Produces: `openLibrary(onPick(type))`, `renderLayers(box, store)`, `renderInspector(box, store)`, `field(parent, label, block = false) → rowElement`
+- Consumes: `startEditor({ stage, ctx, mount, renderFrame })` ถูกเรียกจาก `stage.js` (Task 5), `commands.*` (Task 8), `CATALOG`/`CATEGORIES`, `ENTER_TYPES`/`EXIT_TYPES`/`DIRECTIONS`, `setPreviewBackground`/`saveUrl`/`modeUrl`/`configName` จาก `stage.js`, `uploadFile(file, kind)`/`pickFiles(kind)`/`listAssets()` จาก `templates/_runtime/upload.js` (มีอยู่แล้ว)
+- Produces (store ที่ส่งให้แผงต่างๆ): `{ working, ctx, coords, selected (getter), layer(id), nodeOf(id), select(id|null), snapshot(), markDirty(), act(fn) → Promise<ผลของ fn> (snapshot → fn → rebuild → วาดแผงใหม่), change(fn) → Promise (snapshot → fn → rebuild โดยไม่วาดแผงใหม่ ใช้กับช่องอัปโหลดที่ต้องแสดงข้อความผลลัพธ์ต่อ), onEdit(apply) → (event) => void, refresh(), refreshLayers(), commitPosition(id, node, keepWidth), beginMove(node) }`
+- Produces: `openLibrary(onPick(type))`, `renderLayers(box, store)`, `renderInspector(box, store)`, `field(parent, label, block = false) → rowElement`, `imageField(parent, label, kind, value, apply)` (`kind` = `'image'` | `'background'`, `apply(path)` async), `fontSelect(parent, label, current, defaultLabel, onChange)` (`onChange(path | '')` async)
+
+- [ ] **Step 0: เขียน `templates/_runtime/editor/media.js`** (ย้ายมาจาก `imageField` / `fontField` ใน `editor.js` เดิม)
+
+```js
+// ช่องเลือกไฟล์ในหน้าแก้ไข
+// - imageField: รูปย่อ + อัปโหลด + เลือกจากคลัง + ล้าง และลากไฟล์มาวางได้ (รูปที่ไม่ใช่ PNG ถูกแปลงให้ใน upload.js)
+// - fontSelect: ฟอนต์ค่าเริ่มต้น หรือฟอนต์ที่อัปโหลดเอง
+
+import { el } from '../dom.js';
+import { uploadFile, pickFiles, listAssets } from '../upload.js';
+
+/**
+ * kind = 'image' (รูปในชิ้นส่วน) หรือ 'background' (รูป/คลิปพื้นหลังตัวอย่าง)
+ * apply(path) ถูกเรียกเมื่อเลือกไฟล์ใหม่ ('' = ไม่ใช้รูป) ผู้เรียกจัดการ snapshot / rebuild เอง
+ */
+export function imageField(parent, label, kind, value, apply) {
+  const wrapEl = el('div', 'ed-field ed-image', parent);
+  el('span', 'ed-label', wrapEl, label);
+  const top = el('div', 'ed-row', wrapEl);
+  const thumb = el('div', 'ed-thumb', top);
+  const buttons = el('div', 'ed-row ed-wrap', top);
+  const upBtn = el('button', '', buttons, '📁 อัปโหลด');
+  const libBtn = el('button', '', buttons, '🖼 คลัง');
+  const clearBtn = el('button', '', buttons, '✕');
+  clearBtn.title = 'ไม่ใช้รูป';
+  for (const b of [upBtn, libBtn, clearBtn]) b.type = 'button';
+  const pathEl = el('div', 'ed-path', wrapEl);
+  const msg = el('div', 'ed-msg', wrapEl);
+  const lib = el('div', 'ed-lib', wrapEl);
+  lib.hidden = true;
+
+  let current = value || '';
+  const show = () => {
+    thumb.replaceChildren();
+    pathEl.textContent = current || '(ยังไม่มีรูป) ลากไฟล์มาวางตรงนี้ได้';
+    if (!current) return;
+    const src = current.startsWith('/') || /^https?:/.test(current) ? current : `/${current}`;
+    if (/\.(mp4|webm|mov)$/i.test(current)) el('span', '', thumb, '🎬');
+    else el('img', '', thumb).src = src;
+  };
+  const choose = async (val) => {
+    current = val;
+    show();
+    await apply(val);
+  };
+  const doUpload = async (files) => {
+    const file = files[0];
+    if (!file) return;
+    msg.className = 'ed-msg';
+    msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
+    try {
+      const res = await uploadFile(file, kind);
+      await choose(res.path);
+      msg.textContent = res.converted ? `✓ แปลงเป็น ${res.name} แล้ว` : `✓ อัปโหลด ${res.name} แล้ว`;
+    } catch (err) {
+      msg.className = 'ed-msg bad';
+      msg.textContent = `✗ ${err.message}`;
+    }
+  };
+
+  upBtn.addEventListener('click', async () => doUpload(await pickFiles(kind)));
+  clearBtn.addEventListener('click', () => choose(''));
+  libBtn.addEventListener('click', async () => {
+    if (!lib.hidden) {
+      lib.hidden = true;
+      return;
+    }
+    lib.replaceChildren();
+    const items = (await listAssets()).filter((a) => a.type === 'image' || (kind === 'background' && a.type === 'video'));
+    if (!items.length) el('div', 'ed-hint', lib, 'ยังไม่มีรูปในคลัง กด 📁 อัปโหลด');
+    for (const a of items) {
+      const b = el('button', 'ed-lib-item', lib);
+      b.type = 'button';
+      b.title = a.name;
+      if (a.type === 'video') el('span', '', b, '🎬');
+      else el('img', '', b).src = `/${a.path}`;
+      b.addEventListener('click', () => {
+        lib.hidden = true;
+        choose(a.path);
+      });
+    }
+    lib.hidden = false;
+  });
+  wrapEl.addEventListener('dragover', (e) => {
+    if (e.dataTransfer?.types.includes('Files')) {
+      e.preventDefault();
+      wrapEl.classList.add('drop');
+    }
+  });
+  wrapEl.addEventListener('dragleave', () => wrapEl.classList.remove('drop'));
+  wrapEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    wrapEl.classList.remove('drop');
+    doUpload([...e.dataTransfer.files]);
+  });
+  show();
+}
+
+/** เลือกฟอนต์: ค่าเริ่มต้น ('' ) หรือฟอนต์ที่อัปโหลด (path) พร้อมปุ่มอัปโหลดฟอนต์ใหม่ */
+export function fontSelect(parent, label, current, defaultLabel, onChange) {
+  const wrapEl = el('div', 'ed-field', parent);
+  el('span', 'ed-label', wrapEl, label);
+  const row = el('div', 'ed-row', wrapEl);
+  const sel = el('select', '', row);
+  const upBtn = el('button', '', row, '📁 อัปโหลด');
+  upBtn.type = 'button';
+  const msg = el('div', 'ed-msg', wrapEl);
+  const fill = async (value) => {
+    const fonts = (await listAssets().catch(() => [])).filter((a) => a.type === 'font');
+    sel.replaceChildren();
+    el('option', '', sel, defaultLabel).value = '';
+    for (const f of fonts) el('option', '', sel, f.name).value = f.path;
+    sel.value = value || '';
+  };
+  sel.addEventListener('change', () => onChange(sel.value));
+  upBtn.addEventListener('click', async () => {
+    const [file] = await pickFiles('font');
+    if (!file) return;
+    msg.className = 'ed-msg';
+    msg.textContent = `กำลังอัปโหลด ${file.name} ...`;
+    try {
+      const res = await uploadFile(file, 'font');
+      await onChange(res.path);
+      await fill(res.path);
+      msg.textContent = `✓ ใช้ฟอนต์ ${res.name} แล้ว`;
+    } catch (err) {
+      msg.className = 'ed-msg bad';
+      msg.textContent = `✗ ${err.message}`;
+    }
+  });
+  fill(current);
+}
+```
 
 - [ ] **Step 1: เขียน `templates/_runtime/editor/library.js`**
 
@@ -3289,10 +3459,10 @@ export function openLibrary(onPick) {
     const types = Object.entries(CATALOG).filter(([, def]) => def.category === category);
     if (!types.length) continue;
     el('h4', '', box, title);
-    const grid = el('div', 'ed-lib-grid', box);
+    const grid = el('div', 'ed-picker-grid', box);
     for (const [type, def] of types) {
-      const card = el('button', 'ed-lib-card', grid);
-      el('span', 'ed-lib-icon', card, def.icon);
+      const card = el('button', 'ed-picker-card', grid);
+      el('span', 'ed-picker-icon', card, def.icon);
       el('span', '', card, def.label);
       card.addEventListener('click', () => {
         close();
@@ -3401,7 +3571,9 @@ export function renderLayers(box, store) {
 import { el } from '../dom.js';
 import { CATALOG } from '../../../elements/catalog.js';
 import { ENTER_TYPES, EXIT_TYPES, DIRECTIONS } from '../timing.js';
+import { imageField, fontSelect } from './media.js';
 
+const ALIGN = [['', 'ค่าเริ่มต้น'], ['left', 'ซ้าย'], ['center', 'กลาง'], ['right', 'ขวา']];
 const MOTION_LABELS = { none: 'ไม่มี', fade: 'จางเข้า/ออก', slide: 'เลื่อน', pop: 'เด้ง' };
 const DIR_LABELS = { auto: 'อัตโนมัติ (ขอบที่ใกล้สุด)', left: 'จากซ้าย', right: 'จากขวา', top: 'จากบน', bottom: 'จากล่าง' };
 const COLOR_KEYS = { primary: 'สีหลัก', accent: 'สีเน้น', panel: 'สีพื้นกล่อง', text: 'สีตัวอักษร' };
@@ -3511,6 +3683,26 @@ function positionSection(box, store, layer) {
       for (const k of [...POSITION_KEYS, 'scale']) delete layer.style[k];
       if (!Object.keys(layer.style).length) delete layer.style;
     }));
+
+  // จัดข้อความ ซ้าย/กลาง/ขวา (มีผลกับข้อความหลายบรรทัด)
+  const alignRow = field(box, 'จัดข้อความ');
+  alignRow.classList.add('ed-seg');
+  for (const [value, label] of ALIGN) {
+    const b = el('button', (layer.style?.['text-align'] || '') === value ? 'active' : '', alignRow, label);
+    b.type = 'button';
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      store.snapshot();
+      layer.style = { ...(layer.style || {}) };
+      if (value) layer.style['text-align'] = value;
+      else delete layer.style['text-align'];
+      if (!Object.keys(layer.style).length) delete layer.style;
+      const n = store.nodeOf(layer.id);
+      if (n) n.style.textAlign = value;
+      store.markDirty();
+      for (const x of alignRow.children) x.classList.toggle('active', x === b);
+    });
+  }
 }
 
 function timeSection(box, store, layer) {
@@ -3594,18 +3786,21 @@ function colorSection(box, store, layer) {
         }));
     }
   }
-  const fontIn = textBox(field(box, layer.theme?.font ? 'ฟอนต์' : 'ฟอนต์ (ใช้ฟอนต์ธีม)'), layer.theme?.font, theme.font || 'Kanit');
-  fontIn.addEventListener('input', store.onEdit((n) => {
-    const v = n.value.trim();
-    if (v) layer.theme = { ...(layer.theme ?? {}), font: v };
-    else if (layer.theme) {
-      delete layer.theme.font;
-      if (!Object.keys(layer.theme).length) delete layer.theme;
-    }
-  }));
+  fontSelect(box, 'ฟอนต์ของชิ้นนี้', layer.theme?.fontFile, 'ใช้ฟอนต์ของธีม', (file) =>
+    store.change(() => {
+      if (file) layer.theme = { ...(layer.theme ?? {}), fontFile: file };
+      else if (layer.theme) {
+        delete layer.theme.fontFile;
+        if (!Object.keys(layer.theme).length) delete layer.theme;
+      }
+    }));
 }
 
 function propField(box, store, props, k, f) {
+  if (f.type === 'image') {
+    imageField(box, f.label, 'image', props[k], (path) => store.change(() => (props[k] = path)));
+    return;
+  }
   const block = f.type === 'list' || f.type === 'messages';
   const row = field(box, f.label, block);
   const v = props[k];
@@ -3655,9 +3850,14 @@ function propField(box, store, props, k, f) {
     case 'messages':
       return messagesField(row, store, props, k);
     default: {
-      // text / image (งาน 3 จะเพิ่มปุ่มเลือกไฟล์ให้ช่อง image)
-      const inp = textBox(row, v, f.type === 'image' ? 'assets/logo.png' : '');
-      inp.addEventListener('input', store.onEdit((n) => (props[k] = n.value)));
+      // ข้อความ: กด Enter เพื่อขึ้นบรรทัดใหม่ ช่องจะสูงขึ้นตามจำนวนบรรทัด
+      const ta = el('textarea', 'ed-text', row);
+      ta.value = v ?? '';
+      ta.placeholder = 'Enter = ขึ้นบรรทัดใหม่';
+      const grow = () => (ta.rows = Math.max(1, ta.value.split('\n').length));
+      grow();
+      ta.addEventListener('input', grow);
+      ta.addEventListener('input', store.onEdit((n) => (props[k] = n.value)));
     }
   }
 }
@@ -3699,18 +3899,21 @@ function messagesField(row, store, props, k) {
 // หน้าแก้ไข (mode=edit)
 // - สถานะงานที่กำลังแก้ ประวัติย้อนกลับ บันทึก (POST /__save) และเรนเดอร์
 // - ลากชิ้นบนจอเพื่อย้าย / ปุ่มลูกศรขยับทีละ 1px (Shift = 10px) / คลิกที่ว่าง = ยกเลิกการเลือก
+// - ลากไฟล์รูปมาวางบนจอ รูปจะเข้าชิ้นที่วางทับ (หรือชิ้นที่เลือกอยู่)
 // - แผงคลังชิ้นส่วน / Layers / คุณสมบัติ แยกไฟล์ไว้ (งาน 2 จะย้ายไปวางในแผงใหม่)
 
 import { el, applyStyle } from '../dom.js';
 import { setPreviewBackground, saveUrl, modeUrl, configName } from '../stage.js';
+import { uploadFile } from '../upload.js';
 import { CATALOG } from '../../../elements/catalog.js';
 import * as commands from './commands.js';
 import { openLibrary } from './library.js';
 import { renderLayers } from './layers.js';
 import { renderInspector, field } from './inspector.js';
+import { imageField, fontSelect } from './media.js';
 
-const THEME_LABELS = { primary: 'สีหลัก', accent: 'สีเน้น', panel: 'สีพื้นกล่อง', text: 'สีตัวอักษร', font: 'ฟอนต์' };
-const THEME_DEFAULTS = { primary: '#e3122c', accent: '#ffd400', panel: '#141418', text: '#ffffff', font: 'Kanit' };
+const THEME_LABELS = { primary: 'สีหลัก', accent: 'สีเน้น', panel: 'สีพื้นกล่อง', text: 'สีตัวอักษร' };
+const THEME_DEFAULTS = { primary: '#e3122c', accent: '#ffd400', panel: '#141418', text: '#ffffff' };
 const POSITION_KEYS = ['left', 'right', 'top', 'bottom', 'width', 'transform-origin', 'transformOrigin'];
 
 export async function startEditor({ stage, ctx, mount, renderFrame }) {
@@ -4088,6 +4291,13 @@ export async function startEditor({ stage, ctx, mount, renderFrame }) {
       renderPanel();
       return result;
     },
+    /** เหมือน act แต่ไม่วาดแผงใหม่ (ช่องอัปโหลดยังแสดงข้อความผลลัพธ์ต่อได้) */
+    async change(fn) {
+      snapshot();
+      fn(working);
+      markDirty();
+      await rebuild();
+    },
   };
 
   addBtn.addEventListener('click', () =>
@@ -4095,6 +4305,34 @@ export async function startEditor({ stage, ctx, mount, renderFrame }) {
       const id = await store.act((cfg) => commands.addLayer(cfg, type));
       select(id);
     }));
+
+  // ลากไฟล์รูปมาวางบนจอ: ใส่ให้ชิ้นที่วางทับ (ถ้าไม่ทับชิ้นไหนใช้ชิ้นที่เลือกอยู่) ในช่องรูปช่องแรกของชิ้นนั้น
+  viewport.addEventListener('dragover', (e) => {
+    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  });
+  viewport.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    const id = e.target.closest?.('.layer')?.dataset.id || selected;
+    const layer = id && layerOf(id);
+    const imgKey = layer && Object.entries(CATALOG[layer.type]?.fields || {}).find(([, f]) => f.type === 'image')?.[0];
+    if (!imgKey) {
+      status.textContent = '✗ ชิ้นนี้ไม่มีช่องรูป (ลากไปวางบนชิ้นที่มีรูป/โลโก้ หรือเลือกชิ้นก่อน)';
+      status.classList.add('dirty');
+      return;
+    }
+    if (selected !== id) select(id);
+    status.textContent = `กำลังอัปโหลด ${files[0].name} ...`;
+    try {
+      const res = await uploadFile(files[0], 'image');
+      await store.act(() => (layer.props = { ...(layer.props || {}), [imgKey]: res.path }));
+      status.textContent = res.converted ? `● แปลงเป็น ${res.name} แล้ว (ยังไม่ได้บันทึก)` : '● ยังไม่ได้บันทึก';
+    } catch (err) {
+      status.textContent = `✗ ${err.message}`;
+      status.classList.add('dirty');
+    }
+  });
 
   // ---------- แผงด้านขวา ----------
   function renderPanel() {
@@ -4107,11 +4345,22 @@ export async function startEditor({ stage, ctx, mount, renderFrame }) {
   function renderTheme() {
     const box = themeSec.querySelector('.ed-body') || el('div', 'ed-body', themeSec);
     box.replaceChildren();
+    // ฟอนต์: Kanit ที่มากับโปรแกรม หรือฟอนต์ที่อัปโหลดเอง (theme.fontFile)
+    fontSelect(box, 'ฟอนต์', working.theme.fontFile, 'Kanit (มากับโปรแกรม)', (file) =>
+      store.change(() => {
+        if (file) {
+          working.theme.fontFile = file;
+          working.theme.font = file.split('/').pop().replace(/\.[^.]+$/, '');
+        } else {
+          delete working.theme.fontFile;
+          working.theme.font = 'Kanit';
+        }
+      }));
     for (const [k, label] of Object.entries(THEME_LABELS)) {
       const row = field(box, label);
       const value = working.theme[k] ?? THEME_DEFAULTS[k];
       const inp = el('input', '', row);
-      Object.assign(inp, { type: k === 'font' ? 'text' : 'color', value });
+      Object.assign(inp, { type: 'color', value });
       inp.addEventListener('input', onEdit((n) => {
         working.theme[k] = n.value;
         stage.style.setProperty(`--${k}`, n.value);
@@ -4133,15 +4382,13 @@ export async function startEditor({ stage, ctx, mount, renderFrame }) {
         markDirty();
       }
     });
-    const bgRow = field(box, 'รูป/คลิปพื้นหลังตัวอย่าง (ไว้ใน assets/)');
-    const bg = el('input', '', bgRow);
-    Object.assign(bg, { type: 'text', value: working.preview.background || '', placeholder: 'assets/sample.jpg' });
-    bg.addEventListener('change', () => {
-      snapshot();
-      working.preview.background = bg.value.trim();
-      setPreviewBackground(working.preview.background);
-      markDirty();
-    });
+    imageField(box, 'รูป/คลิปพื้นหลังตัวอย่าง (ใช้ดูตำแหน่งเท่านั้น ไม่ติดไปในไฟล์ที่เรนเดอร์)', 'background',
+      working.preview.background, async (val) => {
+        snapshot();
+        working.preview.background = val;
+        setPreviewBackground(val);
+        markDirty();
+      });
   }
 
   emptyHint.hidden = working.layers.length > 0;
@@ -4188,14 +4435,14 @@ export async function startEditor({ stage, ctx, mount, renderFrame }) {
 .ed-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
 .ed-modal h4 { margin: 16px 0 8px; font-size: 13px; color: #9aa0ad; }
 .ed-modal button.ed-icon { padding: 4px 10px; border: 0; border-radius: 6px; background: #3a3a44; color: #fff; cursor: pointer; }
-.ed-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-.ed-lib-card {
+.ed-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.ed-picker-card {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 14px 8px; border: 1px solid #3a3a44; border-radius: 10px;
   background: #2c2c35; color: #fff; font: inherit; cursor: pointer;
 }
-.ed-lib-card:hover { border-color: #22d3ee; background: #164e63; }
-.ed-lib-icon { font-size: 28px; }
+.ed-picker-card:hover { border-color: #22d3ee; background: #164e63; }
+.ed-picker-icon { font-size: 28px; }
 ```
 
 - [ ] **Step 6: ลบ editor เดิม**
@@ -4222,9 +4469,12 @@ Expected: PASS ทั้งหมด
 8. ข้อความ: ตั้งเวลาเริ่ม 2 จบ 5 (เอาติ๊ก "แสดงจนจบคลิป" ออก) ต้องโผล่เฉพาะช่วงนั้น
 9. เปลี่ยน "สีหลัก" ของแถบโปรโมชันเฉพาะชิ้น สีต้องเปลี่ยนแค่ชิ้นนั้น แล้วกด "↺ ใช้สีธีม" ต้องกลับเป็นสีธีม
 10. ข้อความวิ่ง: กด "＋ เพิ่มบรรทัด" แก้ข้อความ และกด ✕ ลบบรรทัด ส่วนกล่องประกาศ: แก้หัวข้อ/ข้อความ
-11. 💾 บันทึก แล้ว 🎬 เรนเดอร์ ต้องได้ไฟล์ `blank-test.mov` / `.webm` ใน `output/`
-12. เปิดงาน `overlay` ที่ถูกแปลงแล้วใน "✏️ ปรับแต่ง" ต้องเห็น 7 ชิ้นตำแหน่งเดิม และลากได้เหมือนเดิม
-13. หน้าแรก กด "ลองปรับดูก่อน" ของเทมเพลตนีออน ต้องแก้ได้แต่ปุ่มบันทึก/เรนเดอร์ถูกปิด
+11. ชิ้นรูปภาพ: กด 📁 อัปโหลด เลือกไฟล์ .jpg ต้องขึ้น "✓ แปลงเป็น ... .png แล้ว" และรูปเปลี่ยนบนจอ ลองปุ่ม 🖼 คลัง และ ✕ แล้วลากไฟล์รูปจาก Explorer มาวางบนชิ้นแถบโปรโมชันบนจอ โลโก้ต้องเปลี่ยน
+12. ธีม: อัปโหลดฟอนต์ .ttf ในหัวข้อ "ธีมของโปรเจกต์" ทุกชิ้นต้องเปลี่ยนฟอนต์ แล้วตั้ง "ฟอนต์ของชิ้นนี้" ให้ข้อความชิ้นเดียวเป็น Kanit ไม่ได้ (ใช้ฟอนต์ธีม) / เป็นฟอนต์ที่อัปโหลด และลองปุ่ม "จัดข้อความ" กลาง/ขวา กับข้อความ 2 บรรทัด (กด Enter ในช่องข้อความ)
+13. 💾 บันทึก แล้ว 🎬 เรนเดอร์ ต้องได้ไฟล์ `blank-test.mov` / `.webm` ใน `output/` และฟอนต์ที่อัปโหลดต้องติดไปในวิดีโอ
+14. เปิดงาน `overlay` ที่ถูกแปลงแล้วใน "✏️ ปรับแต่ง" ต้องเห็น 7 ชิ้นตำแหน่งเดิม และลากได้เหมือนเดิม
+15. หน้าแรก กด "ลองปรับดูก่อน" ของเทมเพลตนีออน ต้องแก้ได้แต่ปุ่มบันทึก/เรนเดอร์ถูกปิด
+16. หน้าแรก: คลังไฟล์ต้องบอกว่ารูปที่อัปโหลดในข้อ 11 "ใช้ใน: blank-test" และปุ่ม 🗑 ลบงานยังทำงาน
 
 - [ ] **Step 9: Commit**
 
