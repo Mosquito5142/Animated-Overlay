@@ -92,3 +92,13 @@ test('ไฟล์ version 2 อยู่แล้ว: คืนตัวเด�
   const v2 = { version: 2, layers: [] };
   assert.equal(migrate(v2), v2);
 });
+
+test('ไม่ใช่ออบเจกต์ (null / array / ตัวเลข): throw ข้อความภาษาไทย', () => {
+  for (const bad of [null, undefined, [], 5, 'x']) {
+    assert.throws(() => migrate(bad), (err) => !(err instanceof TypeError) && /ออบเจกต์/.test(err.message));
+  }
+});
+
+test('เวอร์ชันใหม่กว่า 2: throw ไม่แปลง', () => {
+  assert.throws(() => migrate({ version: 3, layers: [] }), /เวอร์ชัน 3 ใหม่กว่าโปรแกรมนี้/);
+});

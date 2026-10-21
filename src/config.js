@@ -1,7 +1,7 @@
-import { readFile, writeFile, copyFile, mkdir, access } from 'node:fs/promises';
+import { readFile, writeFile, copyFile, mkdir, access, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { migrate } from './migrate.js';
+import { migrate, projectKind } from './migrate.js';
 import { validateProject } from './validate.js';
 
 // fileURLToPath ให้ path ที่ถูกต้องทั้งบน Windows (C:\...) และ macOS/Linux
@@ -58,24 +58,58 @@ async function backupOriginal(file, backupDir) {
  * ถ้าเป็นไฟล์แบบเดิม จะแปลงให้ เก็บสำเนาเดิมไว้ใน backup/ แล้วเขียนไฟล์ใหม่ทับ
  * (แปลงไม่ได้ → throw และไม่แตะไฟล์)
  */
+/** เขียนไฟล์แบบปลอดภัย: เขียนลงไฟล์ชั่วคราวก่อนแล้วค่อยเปลี่ยนชื่อทับ (ไฟล์เดิมไม่เสียถ้าเขียนไม่จบ) */
+async function writeAtomic(file, text) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  try {
+    await writeFile(tmp, text);
+    await rename(tmp, file);
+  } catch (err) {
+    await unlink(tmp).catch(() => {});
+    throw err;
+  }
+}
+
+/** รวมค่าเริ่มต้น + ตรวจทั้งหมด คืนรายการข้อผิดพลาด */
+function prepare(raw, overrides) {
+  const cfg = { ...DEFAULTS_V2, ...raw, ...overrides };
+  if (typeof cfg.format === 'string') cfg.format = cfg.format.split(',').map((s) => s.trim());
+  if (!Array.isArray(cfg.format)) cfg.format = [];
+  return { cfg, errors: [...basicErrors(cfg), ...validateProject(cfg)] };
+}
+
+/**
+ * อ่านโปรเจกต์แบบ version 2
+ * - ไฟล์แบบเดิม (v1): แปลงให้ ตรวจผล แล้วเก็บสำเนาเดิมไว้ใน backup/ ก่อนเขียนไฟล์ใหม่ทับ
+ * - ไฟล์ที่มี layers แต่ไม่มี version: ถือเป็น v2 (ไม่แปลงและไม่เขียนทับ)
+ * - เวอร์ชันอื่น / แปลงไม่ได้ / แปลงแล้วค่าผิด → throw และไม่แตะไฟล์
+ */
 export async function loadConfig(configPath, overrides = {}, { backupDir = path.join(ROOT, 'backup') } = {}) {
   const file = path.resolve(configPath);
   let raw = await readJson(file);
-  if (raw.version !== 2) {
+  let kind;
+  try {
+    kind = projectKind(raw);
+  } catch (err) {
+    throw new Error(`${err.message} (${file})`);
+  }
+  if (kind === 'v1') {
     let v2;
     try {
       v2 = migrate(raw);
     } catch (err) {
       throw new Error(`${err.message} (${file})`);
     }
+    const { errors } = prepare(v2, {});
+    if (errors.length) throw fail(file, errors);
     await backupOriginal(file, backupDir);
-    await writeFile(file, JSON.stringify(v2, null, 2) + '\n');
+    await writeAtomic(file, JSON.stringify(v2, null, 2) + '\n');
     console.log(`แปลงงาน ${path.basename(file)} เป็นรูปแบบใหม่แล้ว (สำเนาเดิมอยู่ใน backup/)`);
     raw = v2;
+  } else if (raw.version == null) {
+    raw = { ...raw, version: 2 };
   }
-  const cfg = { ...DEFAULTS_V2, ...raw, ...overrides };
-  if (typeof cfg.format === 'string') cfg.format = cfg.format.split(',').map((s) => s.trim());
-  const errors = [...basicErrors(cfg), ...validateProject(cfg)];
+  const { cfg, errors } = prepare(raw, overrides);
   if (errors.length) throw fail(file, errors);
   return cfg;
 }

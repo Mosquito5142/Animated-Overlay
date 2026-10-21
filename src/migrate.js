@@ -70,8 +70,33 @@ function applyPopupTiming(layer, props) {
   layer.exit = { type: 'pop', duration: POP_OUT };
 }
 
+export const CURRENT_VERSION = 2;
+
+/** ข้อความเมื่อเจอไฟล์ที่โปรแกรมนี้อ่านไม่ได้ (เวอร์ชันใหม่กว่า หรือไม่รู้จัก) */
+export function versionError(v) {
+  return typeof v === 'number' && v > CURRENT_VERSION
+    ? `ไฟล์งานเวอร์ชัน ${v} ใหม่กว่าโปรแกรมนี้ (รองรับถึงเวอร์ชัน ${CURRENT_VERSION})`
+    : `ไม่รู้จักรูปแบบไฟล์งาน (version: ${JSON.stringify(v)})`;
+}
+
+const isObject = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+
+/**
+ * แบ่งชนิดไฟล์งาน: 'v1' (ต้องแปลง) / 'v2' (ใช้ได้เลย) / throw ถ้าอ่านไม่ได้
+ * - ไม่มี version หรือ version 1 และไม่มี layers → v1
+ * - version 2 หรือไม่มี version แต่มี layers → v2
+ */
+export function projectKind(raw) {
+  if (!isObject(raw)) throw new Error('ไฟล์งานต้องเป็นออบเจกต์ JSON ({ ... })');
+  const hasLayers = Array.isArray(raw.layers);
+  if (raw.version === CURRENT_VERSION || (raw.version == null && hasLayers)) return 'v2';
+  if ((raw.version == null || raw.version === 1) && !hasLayers) return 'v1';
+  throw new Error(versionError(raw.version));
+}
+
 export function migrate(v1) {
-  if (v1?.version === 2) return v1;
+  if (!isObject(v1)) throw new Error('แปลงงานเดิมไม่ได้: ไฟล์งานต้องเป็นออบเจกต์ JSON ({ ... })');
+  if (projectKind(v1) === 'v2') return v1;
   const template = v1.template ?? 'sponsor-gaming';
   if (!['sponsor-gaming', 'sponsor-popup', 'neon-frame'].includes(template)) {
     throw new Error(`แปลงงานเดิมไม่ได้: ไม่รู้จักเทมเพลต "${template}"`);

@@ -55,3 +55,44 @@ test('v2 ที่ค่าผิด: throw พร้อมรายการข
   await writeFile(file, JSON.stringify({ version: 2, duration: 5, layers: [{ id: 'a', type: 'text', start: 9 }] }));
   await assert.rejects(loadConfig(file, {}, { backupDir }), /start ต้องอยู่ระหว่าง 0 ถึงความยาวคลิป/);
 });
+
+test('ไฟล์เวอร์ชันใหม่กว่า (3): throw และไม่แตะไฟล์', async () => {
+  const { dir, backupDir } = await tmp();
+  const file = path.join(dir, 'future.config.json');
+  const raw = JSON.stringify({ version: 3, resolution: [1920, 1080], things: [] });
+  await writeFile(file, raw);
+  await assert.rejects(loadConfig(file, {}, { backupDir }), /เวอร์ชัน 3 ใหม่กว่าโปรแกรมนี้/);
+  assert.equal(await readFile(file, 'utf8'), raw);
+  await assert.rejects(readdir(backupDir));
+});
+
+test('ไฟล์ v2 ที่ไม่มี version (มี layers): โหลดได้และไม่เขียนทับ', async () => {
+  const { dir, backupDir } = await tmp();
+  const file = path.join(dir, 'nov.config.json');
+  const raw = JSON.stringify({ duration: 5, layers: [{ id: 'text-1', type: 'text', start: 0, end: null, props: { text: 'A' } }] });
+  await writeFile(file, raw);
+  const cfg = await loadConfig(file, {}, { backupDir });
+  assert.equal(cfg.version, 2);
+  assert.equal(cfg.layers.length, 1);
+  assert.equal(await readFile(file, 'utf8'), raw);
+  await assert.rejects(readdir(backupDir));
+});
+
+test('ไฟล์ JSON เป็น null: ข้อความภาษาไทย ไม่ใช่ TypeError', async () => {
+  const { dir, backupDir } = await tmp();
+  const file = path.join(dir, 'null.config.json');
+  await writeFile(file, 'null');
+  await assert.rejects(loadConfig(file, {}, { backupDir }), (err) => !(err instanceof TypeError) && /ออบเจกต์/.test(err.message));
+  assert.equal(await readFile(file, 'utf8'), 'null');
+});
+
+test('แปลงแล้วค่าไม่ถูกต้อง: ไม่แตะไฟล์และไม่สร้างสำรอง', async () => {
+  const { dir, backupDir } = await tmp();
+  const file = path.join(dir, 'badfps.config.json');
+  const raw = JSON.stringify({ template: 'sponsor-gaming', fps: 500, elements: { highlight: { text: 'H' } } });
+  await writeFile(file, raw);
+  await assert.rejects(loadConfig(file, {}, { backupDir }), /fps ต้องอยู่ระหว่าง 1–120/);
+  assert.equal(await readFile(file, 'utf8'), raw);
+  await assert.rejects(readdir(backupDir));
+  assert.deepEqual((await readdir(dir)).sort(), ['badfps.config.json']);
+});
